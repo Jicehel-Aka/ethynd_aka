@@ -1,0 +1,3 @@
+build/
+sdkconfig.old
+__pycache__

@@ -1,0 +1,10 @@
+{
+  "CTRL_MOVE": "Fleches : se deplacer",
+  "CTRL_ATTACK": "A : attaquer / valider",
+  "CTRL_HELP": "C : aide (menu)",
+  "CTRL_BACK": "B : retour",
+  "MENU_LEGEND": "A: Valider   C: Annuler",
+  "MENU_VOLUME": "Volume",
+  "MENU_VOL_MUSIC": "Musique",
+  "MENU_VOL_SFX": "Sons"
+}

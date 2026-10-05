@@ -1,0 +1,65 @@
+name: Build AKA firmware (ESP-IDF)
+
+# Compile le vrai firmware AKA (ESP32-S3, ESP-IDF) -- contrairement a
+# la build PC/SDL, celle-ci n'a pas besoin d'une matrice Windows/Linux :
+# ESP-IDF cross-compile toujours vers la meme cible quel que soit l'OS
+# hote, donc un seul job (ubuntu-latest) suffit a la valider. Utilise
+# l'action officielle Espressif plutot qu'une installation manuelle du
+# toolchain.
+
+on:
+  push:
+    paths:
+      - 'main/**'
+      - 'components/**'
+      - 'shared/**'
+      - 'CMakeLists.txt'
+      - 'sdkconfig*'
+      - 'partitions.csv'
+      - '.github/workflows/build-aka.yml'
+  pull_request:
+    paths:
+      - 'main/**'
+      - 'components/**'
+      - 'shared/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # BUG TROUVE ET CORRIGE (retour de Jicehel, log de build a l'appui) :
+      # un dossier build/ genere localement sur Windows (CMakeCache.txt
+      # garde en dur le chemin absolu source/binaire de sa generation) a
+      # ete commit dans le depot -- le runner Linux de GitHub Actions,
+      # avec un chemin de projet totalement different, refuse de le
+      # reutiliser ("Build directory ... configured for project ...
+      # not ..."). Supprime avant chaque build plutot que de compter sur
+      # "idf.py fullclean" (le cache pointe vers un chemin qui n'existe
+      # meme pas sur le runner, fullclean ne suffit pas forcement a s'en
+      # sortir proprement).
+      - name: Remove stale ESP-IDF build cache
+        run: rm -rf build
+
+      # minimp3.h (CC0) n'est pas dans le depot : telecharge avant la compilation.
+      - name: Fetch minimp3.h
+        run: bash tools/fetch_minimp3.sh
+
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.1
+          target: esp32s3
+          path: '.'
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ethynd-aka-firmware
+          path: |
+            build/ethynd_aka.bin
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+          if-no-files-found: warn

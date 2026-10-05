@@ -1,0 +1,10 @@
+# Table de partitions pour Ethynd, ESP32-S3, 8 Mo.
+# Meme schema que dark_and_under_aka/poa_aka. Si le launcher installe
+# sur la console utilise une autre table, reutiliser celle-la a la
+# place plutot que de regenerer, sous peine d'effacer le loader existant.
+
+nvs,      data, nvs,     0x9000,   0x6000
+otadata,  data, ota,     0xF000,   0x2000
+factory,  app,  factory, 0x20000,  0x300000
+loader,   app,  ota_1,   0x320000, 0x80000
+storage,  data, fat,     0x3A0000, 0x460000

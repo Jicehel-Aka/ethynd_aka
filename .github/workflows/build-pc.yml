@@ -1,0 +1,71 @@
+name: Build PC (SDL)
+
+# Compile la build PC/SDL sur Windows ET Linux (la build AKA, elle, est dans build-aka.yml).
+# SDL2 et SDL2_mixer s'installent differemment sur chaque OS, d'ou la matrice.
+# SDL2_image n'est pas necessaire : les assets sont des fichiers .bin convertis.
+
+on:
+  push:
+    paths:
+      - 'platform_sdl/**'
+      - 'shared/**'
+      - '.github/workflows/build-pc.yml'
+  pull_request:
+    paths:
+      - 'platform_sdl/**'
+      - 'shared/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove stale build cache
+        shell: bash
+        run: rm -rf build
+
+      - name: Install SDL2 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev libsdl2-mixer-dev
+
+      # vcpkg est preinstalle sur les runners windows-latest. Les musiques sont en MP3 :
+      # si la lecture echoue sous Windows, le jeu l'ecrit dans stderr et continue sans musique.
+      - name: Install SDL2 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          vcpkg install sdl2:x64-windows sdl2-mixer:x64-windows
+          $vcpkgExe = (Get-Command vcpkg -ErrorAction Stop).Source
+          $vcpkgRoot = Split-Path -Parent $vcpkgExe
+          $toolchain = Join-Path $vcpkgRoot 'scripts\buildsystems\vcpkg.cmake'
+          if (-not (Test-Path $toolchain)) { throw "Fichier toolchain vcpkg introuvable : $toolchain" }
+          "CMAKE_TOOLCHAIN_FILE=$toolchain" >> $env:GITHUB_ENV
+
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        run: cmake -S platform_sdl -B build
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake -S platform_sdl -B build -DCMAKE_TOOLCHAIN_FILE="$env:CMAKE_TOOLCHAIN_FILE" -DVCPKG_TARGET_TRIPLET=x64-windows -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ethynd-pc-${{ matrix.os }}
+          path: build/**/ethynd_pc*
+          if-no-files-found: warn

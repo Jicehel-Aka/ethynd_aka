@@ -1,0 +1,10 @@
+{
+  "CTRL_MOVE": "D-pad: move",
+  "CTRL_ATTACK": "A: attack / confirm",
+  "CTRL_HELP": "C: help (menu)",
+  "CTRL_BACK": "B: back",
+  "MENU_LEGEND": "A: Confirm   C: Cancel",
+  "MENU_VOLUME": "Volume",
+  "MENU_VOL_MUSIC": "Music",
+  "MENU_VOL_SFX": "Sounds"
+}
