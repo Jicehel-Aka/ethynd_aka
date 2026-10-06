@@ -1,0 +1,49 @@
+name: Tests
+
+# Verifie le monde et les traductions, puis rejoue le jeu et l'editeur SANS ecran (rendu logiciel),
+# sous AddressSanitizer + UBSan. Le depot d'origine (images, constantes) est recupere a cote.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout Ethynd d'origine (images, sons, constantes -- Unlicense)
+        uses: actions/checkout@v4
+        with:
+          repository: ProjetIsn2019/Ethynd
+          path: ethynd_src
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ python3-pil
+
+      - name: Check world and translations
+        run: python3 tools/check_world.py world
+
+      - name: Animation data is up to date
+        run: |
+          python3 tools/gen_data.py ethynd_src shared/game/EthyndData.h
+          git diff --exit-code shared/game/EthyndData.h || (echo "EthyndData.h est perime : relancer tools/gen_data.py" && exit 1)
+
+      - name: Convert assets (24 px, editor palette)
+        run: python3 tools/convert_assets.py ethynd_src out24 --world world --tile 24 --editor-out editor_assets
+
+      - name: Game test (story, doors, quests, languages, reachability)
+        run: SANITIZE=1 AKA_FONT_INC=components/aka_font/include bash host_test/build_and_run.sh out24 shots
+
+      - name: Editor test (headless)
+        run: SANITIZE=1 bash editor/build_and_run_test.sh world editor_assets shots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captures
+          path: shots/*.ppm
+          if-no-files-found: ignore

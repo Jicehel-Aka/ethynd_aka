@@ -7,14 +7,16 @@
 #include "IAssetSource.h"
 #include "Collision.h"
 #include "Config.h"
+#include "World.h"
 
 constexpr uint16_t kNoTile = 0xFFFF;
 
-enum MenuImage { MENU_MENU = 0, MENU_AIDE, MENU_CHARGEMENT, MENU_MORT, MENU_COUNT };
+enum MenuImage { MENU_MENU = 0, MENU_AIDE, MENU_CHARGEMENT, MENU_MORT, MENU_FIN, MENU_COUNT };
 
 struct MapData {
     int w = 0, h = 0;
     std::vector<uint16_t> layer[4];    // identifiants de tuiles compactes, kNoTile = vide
+    MapObjects objects;                // monstres, PNJ, portes, objets de la carte
 };
 
 class AssetStore {
@@ -35,5 +37,5 @@ class AssetStore {
     std::vector<uint16_t> animNext;
     struct SpriteEntry { char name[24]; ImageId id; };
     std::vector<SpriteEntry> sprites;
-    ImageId menus[MENU_COUNT] = { kInvalidImageId, kInvalidImageId, kInvalidImageId, kInvalidImageId };
+    ImageId menus[MENU_COUNT] = { kInvalidImageId, kInvalidImageId, kInvalidImageId, kInvalidImageId, kInvalidImageId };
 };

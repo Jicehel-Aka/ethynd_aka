@@ -1,0 +1,46 @@
+# Histoire d'Ethynd : drapeaux, objets, dialogues, objectifs.
+# AUCUN texte ici : seulement des cles de traduction, traduites dans lang/<code>.txt
+# (fr = langue par defaut, en, et toute langue ajoutee). '-' = pas de locuteur (narration).
+#
+# Conditions d'un PNJ (ligne "npc" des cartes) : drapeau, !drapeau ou has:objet ; la premiere vraie gagne.
+
+flag talked_sage
+flag crystal_returned
+
+# itemdef <id> <icone> <soin> <cle du nom>   (soin > 0 : consomme sur place, rend de la vie)
+itemdef potion item_potion 3 item.potion
+itemdef crystal item_crystal 0 item.crystal
+
+dialogue sage_intro
+say npc.sage sage.intro.1
+say npc.sage sage.intro.2
+say npc.sage sage.intro.3
+set talked_sage
+
+dialogue sage_wait
+say npc.sage sage.wait.1
+
+dialogue sage_thanks
+say npc.sage sage.thanks.1
+say npc.sage sage.thanks.2
+take crystal 1
+set crystal_returned
+win
+
+dialogue gardien_talk
+say npc.gardien gardien.1
+say npc.gardien gardien.2
+
+dialogue deny_cave_house
+say - deny.house
+
+dialogue deny_cave_village
+say - deny.village
+
+# objective <id> <apres|-> <condition> <cle du titre>
+# conditions : flag:<drapeau>  kill:<monstre>:<n>  item:<objet>:<n>  map:<carte>  reach:<carte>:<x>:<y>:<rayon>
+objective find_sage - flag:talked_sage obj.find_sage
+objective enter_cave find_sage map:grotte obj.enter_cave
+objective bats enter_cave kill:chauve_souris:4 obj.bats
+objective crystal bats item:crystal:1 obj.crystal
+objective deliver crystal flag:crystal_returned obj.deliver

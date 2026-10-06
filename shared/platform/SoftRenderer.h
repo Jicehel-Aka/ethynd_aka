@@ -17,10 +17,11 @@
 
 class SoftRenderer : public IRenderer {
   public:
-    SoftRenderer() : fb( kScreenW * kScreenH, 0 ) {}
+    explicit SoftRenderer( int w = kScreenW, int h = kScreenH ) : W( w ), H( h ), fb( (size_t)w * h, 0 ) {}
+    int W, H;                                 // taille du framebuffer (320x240 pour le jeu)
     struct Img { const uint16_t* px; uint16_t w, h; };
     std::vector<Img> images;
-    std::vector<uint16_t> fb;                 // kScreenW * kScreenH, BGR565
+    std::vector<uint16_t> fb;                 // W * H, BGR565
 
     ImageId createImage( const uint16_t* p, uint16_t w, uint16_t h ) override {
         if ( images.size() >= kInvalidImageId ) return kInvalidImageId;
@@ -35,24 +36,28 @@ class SoftRenderer : public IRenderer {
         if ( id >= images.size() ) return;
         const Img& im = images[id];
         for ( int yy = 0; yy < im.h; yy++ ) {
-            int dy = y + yy; if ( dy < 0 || dy >= kScreenH ) continue;
+            int dy = y + yy; if ( dy < 0 || dy >= H ) continue;
             for ( int xx = 0; xx < im.w; xx++ ) {
                 uint16_t v = im.px[yy * im.w + xx];
                 if ( v != kColorKey ) put( x + xx, dy, v );
             }
         }
     }
-    void drawText( int16_t x, int16_t y, const char* t, RGBColor c, FontSize size ) override {
+    void drawText( int16_t x, int16_t y, const char* t, RGBColor c, FontSize size = FontSize::Wide, int scale = 1 ) override {
         uint16_t pen = nativeColor( c.r, c.g, c.b );
+        if ( scale < 1 ) scale = 1;
+        auto px = [&]( int ox, int oy ) {                   // pixel de la police, agrandi
+            for ( int sy = 0; sy < scale; sy++ ) for ( int sx = 0; sx < scale; sx++ ) put( x + ox * scale + sx, y + oy * scale + sy, pen );
+        };
 #ifdef SOFT_HAVE_AKA_FONT
         if ( size == FontSize::Wide ) {       // meme rendu UTF-8 + accents que sur la console
-            gb_text::draw_utf8( x, y, t, [&]( int px, int py ) { put( px, py, pen ); } );
+            gb_text::draw_utf8( 0, 0, t, px );
             return;
         }
 #else
         (void)size;
 #endif
-        int cx = x;
+        int cx = 0;
         for ( const char* p = t; *p; ++p ) {  // police 5x8, 6 px par caractere
             uint8_t code = (uint8_t)*p;
             if ( code < 32 || code > 126 ) { cx += 6; continue; }
@@ -60,7 +65,7 @@ class SoftRenderer : public IRenderer {
             for ( int dy = 0; dy < kSimple5x8Height; dy++ ) {
                 uint8_t line = g[dy];
                 for ( int dx = 0; dx < kSimple5x8Width; dx++, line >>= 1 )
-                    if ( line & 1 ) put( cx + dx, y + dy, pen );
+                    if ( line & 1 ) px( cx + dx, dy );
             }
             cx += 6;
         }
@@ -73,7 +78,7 @@ class SoftRenderer : public IRenderer {
 
     bool savePPM( const char* path ) const {
         FILE* f = fopen( path, "wb" ); if ( !f ) return false;
-        fprintf( f, "P6\n%d %d\n255\n", kScreenW, kScreenH );
+        fprintf( f, "P6\n%d %d\n255\n", W, H );
         for ( uint16_t v : fb ) {
             uint8_t r5 = v & 31, g6 = ( v >> 5 ) & 63, b5 = v >> 11;
             uint8_t rgb[3] = { (uint8_t)( r5 << 3 | r5 >> 2 ), (uint8_t)( g6 << 2 | g6 >> 4 ), (uint8_t)( b5 << 3 | b5 >> 2 ) };
@@ -84,5 +89,5 @@ class SoftRenderer : public IRenderer {
 
   protected:
     static uint16_t nativeColor( uint8_t r, uint8_t g, uint8_t b ) { return ( r >> 3 ) | ( ( g >> 2 ) << 5 ) | ( ( b >> 3 ) << 11 ); }
-    void put( int x, int y, uint16_t v ) { if ( x >= 0 && y >= 0 && x < kScreenW && y < kScreenH ) fb[y * kScreenW + x] = v; }
+    void put( int x, int y, uint16_t v ) { if ( x >= 0 && y >= 0 && x < W && y < H ) fb[(size_t)y * W + x] = v; }
 };

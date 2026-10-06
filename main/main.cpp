@@ -71,6 +71,8 @@ extern "C" void app_main( void )
     xTaskCreatePinnedToCore( audio_mix_task, "AudioMixTask", 6144, nullptr, 5, nullptr, 1 );
 
     static Game game( renderer, audio, source );
+    game.setQuitHintKey( "ui.quit.aka" );
+    game.setLanguage( akaRuntime.getLanguage() );
     if ( !game.init() ) {
         fatalScreen( "Ethynd : assets introuvables", "Copier sdcard_files/Ethynd sur la SD" );
         while ( true ) vTaskDelay( pdMS_TO_TICKS( 1000 ) );
@@ -91,8 +93,7 @@ extern "C" void app_main( void )
         const char* lang = akaRuntime.getLanguage();
         if ( strncmp( lang, lastLang, sizeof lastLang - 1 ) != 0 ) {
             strncpy( lastLang, lang, sizeof lastLang - 1 );
-            game.setLanguage( lang );
-            game.setQuitHint( lang[0] == 'e' && lang[1] == 'n' ? "MENU: system menu" : "MENU : menu systeme" );
+            game.setLanguage( lang );             // code du menu systeme : fr, en, ... (repli sur fr si pas de lang/<code>.bin)
         }
 
         uint32_t now = platformMillis();

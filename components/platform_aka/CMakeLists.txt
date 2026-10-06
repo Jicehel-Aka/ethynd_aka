@@ -4,6 +4,8 @@ idf_component_register(
          "../../shared/game/GameMap.cpp"
          "../../shared/game/Characters.cpp"
          "../../shared/game/AssetStore.cpp"
+         "../../shared/game/World.cpp"
+         "../../shared/game/Lang.cpp"
     INCLUDE_DIRS "." "../../shared/platform" "../../shared/game"
     REQUIRES gamebuino aka_runtime aka_font)
 

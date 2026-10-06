@@ -14,7 +14,7 @@ class AkaRenderer : public IRenderer {
     ImageId createImage( const uint16_t* pixels, uint16_t w, uint16_t h ) override;
     void fillRect( int16_t x, int16_t y, int16_t w, int16_t h, RGBColor color ) override;
     void drawImage( int16_t x, int16_t y, ImageId image ) override;
-    void drawText( int16_t x, int16_t y, const char* text, RGBColor color, FontSize size = FontSize::Wide ) override;
+    void drawText( int16_t x, int16_t y, const char* text, RGBColor color, FontSize size = FontSize::Wide, int scale = 1 ) override;
     void getImageSize( ImageId image, int16_t& outW, int16_t& outH ) const override;
     void present() override;
 

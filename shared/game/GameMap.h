@@ -11,6 +11,9 @@ class GameMap {
     bool load( const AssetStore& assets, IAssetSource& src, const char* name, int camX, int camY );
 
     const char* name() const { return mapName; }
+    const MapObjects& objects() const { return data.objects; }
+    int mapWidth() const { return data.w; }
+    int mapHeight() const { return data.h; }
     int camX = 0, camY = 0;
 
     void update();                                        // animation des tuiles (tous les 6 ticks)

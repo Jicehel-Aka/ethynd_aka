@@ -41,11 +41,17 @@ static bool stepAnimator( Animator& a, const CharDef* def )
     return true;
 }
 
+ImageId staticSprite( const ResolvedChar* rc, Dir d )
+{
+    ImageId i = pickSprite( rc, d, MOV_BASE, 0 );
+    return i != kInvalidImageId ? i : pickSprite( rc, d, MOV_MARCHE, 0 );
+}
+
 // ---------------------------------------------------------------- joueur
 void Player::init( const ResolvedChar* r ) { rc = r; a = Animator(); vie = kPlayerLife; blesser = false; attackActive = false;
                                               swordRect = Rect{ kLogicCx - 20, kLogicCy - 22, 32, 22 }; }
 
-void Player::readKeys( const InputState& in, GameMap& map )
+void Player::readKeys( const InputState& in, GameMap& map, const std::vector<Rect>& blockers )
 {
     if ( !a.libre ) return;
     struct Key { bool pressed; int dx, dy; int dir; Mov mov; bool libre; };
@@ -63,7 +69,12 @@ void Player::readKeys( const InputState& in, GameMap& map )
         if ( k.dir >= 0 ) a.dir = (Dir)k.dir;
         if ( a.mov != k.mov ) { a.mov = k.mov; a.compteur = 0; a.frame = 0; }
         a.libre = k.libre;
-        if ( !map.collidesScreen( hitbox(), map.camX + k.dx, map.camY + k.dy ) ) {
+        bool blocked = map.collidesScreen( hitbox(), map.camX + k.dx, map.camY + k.dy );
+        if ( !blocked ) {
+            Rect wr{ hitbox().x - ( map.camX + k.dx ), hitbox().y - ( map.camY + k.dy ), kPlayerHitW, kPlayerHitH };
+            for ( const Rect& b : blockers ) if ( rectsOverlap( wr, b ) ) { blocked = true; break; }
+        }
+        if ( !blocked ) {
             map.camX += k.dx;
             map.camY += k.dy;
         }

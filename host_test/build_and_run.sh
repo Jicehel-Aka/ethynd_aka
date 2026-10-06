@@ -7,8 +7,9 @@ S="$HERE/../shared"
 ASSETS="${1:-out24}"
 SHOTS="${2:-shots}"
 mkdir -p "$SHOTS"
-g++ -std=gnu++17 -O1 -Wall -Wextra -DETHYND_HOST_TEST \
+SAN=""; [ -n "$SANITIZE" ] && SAN="-g -fsanitize=address,undefined -fno-omit-frame-pointer"
+g++ -std=gnu++17 -O1 -Wall -Wextra $SAN -DETHYND_HOST_TEST \
     -I"$S/platform" -I"$S/game" -I"$HERE" ${AKA_FONT_INC:+-I"$AKA_FONT_INC"} \
     "$HERE/host_main.cpp" "$S/game/Game.cpp" "$S/game/GameMap.cpp" \
-    "$S/game/Characters.cpp" "$S/game/AssetStore.cpp" -o "${TMPDIR:-/tmp}/ethynd_test"
-"${TMPDIR:-/tmp}/ethynd_test" "$ASSETS" "$SHOTS"
+    "$S/game/Characters.cpp" "$S/game/AssetStore.cpp" "$S/game/World.cpp" "$S/game/Lang.cpp" -o "${TMPDIR:-/tmp}/ethynd_test"
+"${TMPDIR:-/tmp}/ethynd_test" "$ASSETS" "$SHOTS" "${@:3}"

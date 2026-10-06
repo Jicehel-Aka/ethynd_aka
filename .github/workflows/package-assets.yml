@@ -1,0 +1,44 @@
+name: Package SD card assets
+
+# Fabrique l'archive a decompresser sur la carte SD de la console (/Ethynd/ : tuiles, cartes,
+# sprites, menus, audio MP3/WAV, LANGUES). Relance ce workflow apres avoir modifie world/ ou
+# world/lang/ : l'archive contient toutes les langues presentes dans world/lang/.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'world/**'
+      - 'tools/**'
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout Ethynd d'origine (images, sons, constantes -- Unlicense)
+        uses: actions/checkout@v4
+        with:
+          repository: ProjetIsn2019/Ethynd
+          path: ethynd_src
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pil ffmpeg zip
+
+      - name: Build assets
+        run: bash tools/build_assets.sh ethynd_src 24
+
+      - name: Zip
+        run: cd sdcard_files && zip -qr ../Ethynd_sdcard.zip Ethynd
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ethynd_sdcard
+          path: Ethynd_sdcard.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editor_assets
+          path: editor_assets/

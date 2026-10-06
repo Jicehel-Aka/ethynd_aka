@@ -8,11 +8,13 @@ on:
   push:
     paths:
       - 'platform_sdl/**'
+      - 'editor/**'
       - 'shared/**'
       - '.github/workflows/build-pc.yml'
   pull_request:
     paths:
       - 'platform_sdl/**'
+      - 'editor/**'
       - 'shared/**'
   workflow_dispatch:
 
@@ -62,6 +64,26 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release
+
+      # Editeur de cartes (meme SDL2 ; pas besoin de SDL2_mixer)
+      - name: Configure editor (Linux)
+        if: runner.os == 'Linux'
+        run: cmake -S editor -B build_editor
+
+      - name: Configure editor (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake -S editor -B build_editor -DCMAKE_TOOLCHAIN_FILE="$env:CMAKE_TOOLCHAIN_FILE" -DVCPKG_TARGET_TRIPLET=x64-windows -A x64
+
+      - name: Build editor
+        run: cmake --build build_editor --config Release
+
+      - name: Upload editor artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ethynd-editor-${{ matrix.os }}
+          path: build_editor/**/ethynd_editor*
+          if-no-files-found: warn
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

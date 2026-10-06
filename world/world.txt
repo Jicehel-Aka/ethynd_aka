@@ -1,0 +1,3 @@
+# Monde d'Ethynd -- voir tools/world_io.py pour le format
+start maison 306 160 bas
+maps maison aventure grotte

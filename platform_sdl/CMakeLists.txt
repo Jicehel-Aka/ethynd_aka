@@ -16,6 +16,8 @@ add_executable(ethynd_pc
     ../shared/game/GameMap.cpp
     ../shared/game/Characters.cpp
     ../shared/game/AssetStore.cpp
+    ../shared/game/World.cpp
+    ../shared/game/Lang.cpp
 )
 
 target_include_directories(ethynd_pc PRIVATE

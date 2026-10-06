@@ -1,0 +1,121 @@
+# Francais (langue par defaut : toute cle manquante ailleurs retombe sur ce fichier).
+# Format : cle = texte. Une ligne par cle. Le jeu coupe les lignes tout seul.
+
+# --- personnages et objets
+npc.sage = Le sage
+npc.gardien = Le gardien
+item.potion = Potion de soin
+item.crystal = Cristal de lumière
+
+# --- histoire : le sage
+sage.intro.1 = Ah, te voilà enfin ! Le village a besoin de toi, jeune aventurier.
+sage.intro.2 = Des chauves-souris ont volé le Cristal de lumière. Sans lui, la nuit tombera sur nous.
+sage.intro.3 = L'escalier de la cave, au fond à droite, mène à leur grotte. Frappe avec A, et prends garde à tes points de vie !
+sage.wait.1 = Alors, ce Cristal ? La grotte est au bout de l'escalier de la cave. Vaincs les chauves-souris et rapporte-le-moi.
+sage.thanks.1 = Le Cristal de lumière ! Tu l'as retrouvé !
+sage.thanks.2 = Grâce à toi, le village est sauvé. Merci, brave aventurier.
+
+# --- histoire : le gardien et les portes verrouillées
+gardien.1 = Halte ! Le château est fermé ce soir. Les ordres du roi sont les ordres du roi.
+gardien.2 = Si tu cherches la grotte, son entrée est tout près, à l'ouest, au pied du mur. Mais va d'abord voir le sage.
+deny.house = Cet escalier mène à la grotte. Je devrais d'abord parler au sage.
+deny.village = L'entrée de la grotte est sombre. Le sage doit d'abord m'expliquer ce qui se passe.
+
+# --- objectifs
+obj.find_sage = Parler au sage dans la maison
+obj.enter_cave = Entrer dans la grotte
+obj.bats = Vaincre 4 chauves-souris
+obj.crystal = Retrouver le Cristal de lumière
+obj.deliver = Rapporter le Cristal au sage
+
+# --- interface
+ui.menu.subtitle = Projet d'ISN : RPG
+ui.menu.play = Jouer
+ui.menu.help = Aide
+ui.cap.a = (bouton A)
+ui.cap.c = (bouton C)
+ui.help.title = Aide
+ui.help.move = Flèches : se déplacer
+ui.help.attack = A : attaquer / parler
+ui.help.log = B : objectifs
+ui.help.back = B : retour
+ui.help.back_menu = B : retour au menu
+ui.help.credits = Jeu créé par :
+ui.dead.title = Game Over !
+ui.dead.sub = Vous avez perdu !
+ui.dead.hint = A : retour au menu
+ui.win.title = Félicitations !
+ui.win.sub = Le village est sauvé !
+ui.win.hint = A : retour au menu
+ui.loading = Chargement...
+ui.hud.life = Vie
+ui.log.title = Objectifs
+ui.log.items = Objets
+ui.log.none = (aucun)
+ui.log.close = B : fermer
+ui.toast.done = Objectif accompli :
+ui.toast.item = Objet obtenu :
+ui.quit.aka = MENU : menu système
+ui.quit.pc = Échap : quitter
+
+# --- menu systeme de l'AKA (cles prefixees aka. : exportees en lang/<code>.json pour aka_runtime)
+aka.CTRL_MOVE = Flèches : se déplacer
+aka.CTRL_ATTACK = A : attaquer / parler / valider
+aka.CTRL_HELP = C : aide (menu)
+aka.CTRL_BACK = B : objectifs / retour
+aka.MENU_LEGEND = A : Valider   C : Annuler
+aka.MENU_VOLUME = Volume
+aka.MENU_VOL_MUSIC = Musique
+aka.MENU_VOL_SFX = Sons
+
+# --- editeur de cartes (PC) : textes de l'interface de l'editeur
+ed.title = Éditeur Ethynd
+ed.tool.brush = Pinceau
+ed.tool.fill = Remplir
+ed.tool.rect = Rectangle
+ed.tool.erase = Gomme
+ed.tool.pick = Pipette
+ed.tool.select = Objets
+ed.tool.spawn = + Monstre
+ed.tool.npc = + PNJ
+ed.tool.door = + Porte
+ed.tool.item = + Objet
+ed.tool.start = Départ
+ed.layer = Couche
+ed.tile = Tuile
+ed.status.saved = Sauvegardé : {0} carte(s)
+ed.status.save_failed = Échec de la sauvegarde : {0}
+ed.status.dirty = modifié
+ed.status.undo = Annulé
+ed.status.redo = Rétabli
+ed.status.nothing = Rien à annuler
+ed.status.picked = Tuile {0} prise
+ed.status.collide_on = Tuile {0} : collision activée
+ed.status.collide_off = Tuile {0} : collision désactivée
+ed.status.selected = Sélection : {0}
+ed.status.deleted = Objet supprimé
+ed.status.placed = Objet placé
+ed.status.bad_value = Valeur refusée : {0}
+ed.status.applied = Propriétés appliquées
+ed.status.newmap = Carte « {0} » créée
+ed.status.start_set = Départ placé
+ed.status.unsaved = Modifications non sauvegardées : Ctrl+S, ou fermez de nouveau pour quitter
+ed.status.warn = {0} avertissement(s) : {1}
+ed.prompt.props = Propriétés
+ed.prompt.newmap = Nouvelle carte (nom largeur hauteur)
+ed.prompt.goto = Aller à la tuile n°
+ed.prompt.music = Musique (none, menu, maison, aventure, grotte)
+ed.help.title = Aide de l'éditeur (H pour fermer)
+ed.help.1 = Clic gauche : dessiner / sélectionner   Clic droit : pipette
+ed.help.2 = B pinceau  F remplir  R rectangle  E gomme  I pipette  V objets
+ed.help.3 = M monstre  N PNJ  D porte (glisser)  T objet  S départ
+ed.help.4 = 1-4 couche   F1-F4 afficher/masquer une couche   G grille   C collisions
+ed.help.5 = Molette : défiler   Maj+molette : horizontal   Espace+glisser : déplacer la vue
+ed.help.6 = Objet sélectionné : flèches (8 px, Maj 32 px)  Suppr  P propriétés  , . type
+ed.help.7 = X collision de la tuile choisie   J aller à une tuile   PgUp/PgDn palette
+ed.help.8 = Tab / Maj+Tab : autre carte   Ctrl+N nouvelle carte   Ctrl+M musique
+ed.help.9 = Ctrl+Z annuler   Ctrl+Y rétablir   Ctrl+S sauvegarder   F9 reconstruire le jeu
+ed.help.10 = Les textes de l'histoire se modifient dans story.txt et lang/*.txt
+ed.build.none = Aucune commande de build : lancer tools/build_assets.sh
+ed.build.run = Reconstruction...
+ed.build.done = Reconstruction terminée (code {0})

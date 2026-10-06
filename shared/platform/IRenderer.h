@@ -31,8 +31,9 @@ class IRenderer {
 
     virtual void fillRect( int16_t x, int16_t y, int16_t w, int16_t h, RGBColor color ) = 0;
     virtual void drawImage( int16_t x, int16_t y, ImageId image ) = 0;
+    // texte UTF-8 ; scale >= 1 agrandit chaque pixel de la police (titres)
     virtual void drawText( int16_t x, int16_t y, const char* text, RGBColor color,
-                           FontSize size = FontSize::Wide ) = 0;
+                           FontSize size = FontSize::Wide, int scale = 1 ) = 0;
     virtual void getImageSize( ImageId image, int16_t& outW, int16_t& outH ) const = 0;
     virtual void present() = 0;
 };

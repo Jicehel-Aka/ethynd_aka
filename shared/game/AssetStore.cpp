@@ -1,6 +1,7 @@
 #include "AssetStore.h"
 #include "Config.h"
 #include <cstring>
+#include "ByteReader.h"
 #include <cstdio>
 
 static uint16_t rd16( const uint8_t* p ) { uint16_t v; memcpy( &v, p, 2 ); return v; }
@@ -40,7 +41,7 @@ bool AssetStore::load( IAssetSource& src, IRenderer& r )
     }
 
     // ---- ecrans 320x240 (menu/<nom>.raw, RGB565 sans en-tete)
-    static const char* const menuFiles[MENU_COUNT] = { "menu/menu.raw", "menu/aide.raw", "menu/chargement.raw", "menu/mort.raw" };
+    static const char* const menuFiles[MENU_COUNT] = { "menu/menu.raw", "menu/aide.raw", "menu/chargement.raw", "menu/mort.raw", "menu/fin.raw" };
     for ( int m = 0; m < MENU_COUNT; m++ ) {
         if ( !src.read( menuFiles[m], menuBlob[m] ) || menuBlob[m].size() < 320 * 240 * 2 ) return false;
         menus[m] = r.createImage( (const uint16_t*)menuBlob[m].data(), 320, 240 );
@@ -60,13 +61,38 @@ bool AssetStore::loadMap( IAssetSource& src, const char* name, MapData& out ) co
     char path[64];
     snprintf( path, sizeof path, "maps/%s.map", name );
     std::vector<uint8_t> d;
-    if ( !src.read( path, d ) || d.size() < 12 || memcmp( d.data(), "EMAP", 4 ) ) return false;
-    int w = rd16( &d[4] ), h = rd16( &d[6] ), layers = rd16( &d[8] );
-    if ( layers != 4 || d.size() < 12 + (size_t)4 * w * h * 2 ) return false;
+    if ( !src.read( path, d ) ) return false;
+    ByteReader r( d.data(), d.size() );
+    if ( !r.tag( "EMA2" ) ) { fprintf( stderr, "%s : format de carte inconnu\n", path ); return false; }
+    int w = r.u16(), h = r.u16(), layers = r.u16();
+    r.u16();                                              // taille de tuile d'affichage (deja verifiee)
+    if ( layers != 4 || !r.ok() ) return false;
+    out = MapData();
     out.w = w; out.h = h;
+    out.objects.music = r.u8(); r.u8();
     for ( int l = 0; l < 4; l++ ) {
         out.layer[l].resize( (size_t)w * h );
-        memcpy( out.layer[l].data(), &d[12 + (size_t)l * w * h * 2], (size_t)w * h * 2 );
+        for ( uint16_t& t : out.layer[l] ) t = r.u16();
     }
-    return true;
+    int n = r.u16();
+    for ( int i = 0; i < n; i++ ) {
+        SpawnObj s; s.type = r.sstr(); s.x = r.s16(); s.y = r.s16(); s.vie = r.s16(); s.attaque = r.s16();
+        out.objects.spawns.push_back( s );
+    }
+    n = r.u16();
+    for ( int i = 0; i < n; i++ ) {
+        NpcObj o; o.type = r.sstr(); o.x = r.s16(); o.y = r.s16(); o.dir = (Dir)( r.u8() & 3 );
+        int nr = r.u8();
+        for ( int k = 0; k < nr; k++ ) { TalkRule t; t.kind = r.u8(); t.arg = r.s16(); t.dialogue = r.s16(); o.rules.push_back( t ); }
+        out.objects.npcs.push_back( o );
+    }
+    n = r.u16();
+    for ( int i = 0; i < n; i++ ) {
+        DoorObj o; int x = r.s16(), y = r.s16(), dw = r.s16(), dh = r.s16();
+        o.r = Rect{ x, y, dw, dh }; o.destMap = r.u8(); o.dx = r.s16(); o.dy = r.s16(); o.needFlag = r.s16(); o.deny = r.s16();
+        out.objects.doors.push_back( o );
+    }
+    n = r.u16();
+    for ( int i = 0; i < n; i++ ) { ItemObj o; o.def = r.u8(); o.x = r.s16(); o.y = r.s16(); out.objects.items.push_back( o ); }
+    return r.ok();
 }

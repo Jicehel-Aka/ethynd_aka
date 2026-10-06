@@ -52,6 +52,22 @@ static const char* const k_dragon_rouge_bas_marche[] = { "dragon_rouge_00", "dra
 static const char* const k_dragon_rouge_haut_marche[] = { "dragon_rouge_12", "dragon_rouge_13", "dragon_rouge_14", "dragon_rouge_15" };
 static const char* const k_dragon_rouge_gauche_marche[] = { "dragon_rouge_04", "dragon_rouge_05", "dragon_rouge_06", "dragon_rouge_07" };
 static const char* const k_dragon_rouge_droite_marche[] = { "dragon_rouge_08", "dragon_rouge_09", "dragon_rouge_10", "dragon_rouge_11" };
+static const char* const k_sage_bas_base[] = { "sage_00" };
+static const char* const k_sage_bas_marche[] = { "sage_01", "sage_02", "sage_03", "sage_00" };
+static const char* const k_sage_haut_base[] = { "sage_22" };
+static const char* const k_sage_haut_marche[] = { "sage_23", "sage_24", "sage_25", "sage_22" };
+static const char* const k_sage_gauche_base[] = { "sage_33" };
+static const char* const k_sage_gauche_marche[] = { "sage_34", "sage_35", "sage_36", "sage_33" };
+static const char* const k_sage_droite_base[] = { "sage_11" };
+static const char* const k_sage_droite_marche[] = { "sage_12", "sage_13", "sage_14", "sage_11" };
+static const char* const k_gardien_bas_base[] = { "gardien_00" };
+static const char* const k_gardien_bas_marche[] = { "gardien_01", "gardien_02", "gardien_03", "gardien_00" };
+static const char* const k_gardien_haut_base[] = { "gardien_22" };
+static const char* const k_gardien_haut_marche[] = { "gardien_23", "gardien_24", "gardien_25", "gardien_22" };
+static const char* const k_gardien_gauche_base[] = { "gardien_33" };
+static const char* const k_gardien_gauche_marche[] = { "gardien_34", "gardien_35", "gardien_36", "gardien_33" };
+static const char* const k_gardien_droite_base[] = { "gardien_11" };
+static const char* const k_gardien_droite_marche[] = { "gardien_12", "gardien_13", "gardien_14", "gardien_11" };
 
 static const CharDef kDef_joueur = {
     "joueur",
@@ -143,19 +159,41 @@ static const CharDef kDef_dragon_rouge = {
     },
 };
 
+static const CharDef kDef_sage = {
+    "sage",
+    { // timings : tick, derniere frame, libre, retour a base
+        { -1, 0, true, false },  // base
+        { 4, 3, true, false },  // marche
+        { -1, 0, true, false },  // attaque
+    },
+    { // animations [direction][mouvement]
+        { { 1, k_sage_bas_base }, { 4, k_sage_bas_marche }, { 0, nullptr } },  // bas
+        { { 1, k_sage_haut_base }, { 4, k_sage_haut_marche }, { 0, nullptr } },  // haut
+        { { 1, k_sage_gauche_base }, { 4, k_sage_gauche_marche }, { 0, nullptr } },  // gauche
+        { { 1, k_sage_droite_base }, { 4, k_sage_droite_marche }, { 0, nullptr } },  // droite
+    },
+};
+
+static const CharDef kDef_gardien = {
+    "gardien",
+    { // timings : tick, derniere frame, libre, retour a base
+        { -1, 0, true, false },  // base
+        { 4, 3, true, false },  // marche
+        { -1, 0, true, false },  // attaque
+    },
+    { // animations [direction][mouvement]
+        { { 1, k_gardien_bas_base }, { 4, k_gardien_bas_marche }, { 0, nullptr } },  // bas
+        { { 1, k_gardien_haut_base }, { 4, k_gardien_haut_marche }, { 0, nullptr } },  // haut
+        { { 1, k_gardien_gauche_base }, { 4, k_gardien_gauche_marche }, { 0, nullptr } },  // gauche
+        { { 1, k_gardien_droite_base }, { 4, k_gardien_droite_marche }, { 0, nullptr } },  // droite
+    },
+};
+
 static const CharDef* const kEntityDefs[] = { &kDef_chauve_souris, &kDef_chat, &kDef_oiseau, &kDef_poussin, &kDef_dragon_rouge };
 static const char* const kEntityNames[] = { "chauve_souris", "chat", "oiseau", "poussin", "dragon_rouge" };
-static const int kEntityDefCount = 5;
+static const int kEntityDefCount = 5;      // monstres (indices des compteurs de victimes)
 
-// Niveaux : monstres (deplacement aleatoire). Positions en pixels logiques (32 px/case)
-struct SpawnDef { const char* type; int16_t x, y, w, h; int16_t vie, attaque; };
-static const SpawnDef kSpawns_grotte[] = { { "chauve_souris", 269, 315, 32, 32, 10, 2 }, { "chauve_souris", 500, 400, 32, 32, 10, 2 }, { "chauve_souris", 770, 450, 32, 32, 10, 2 }, { "chauve_souris", 700, 600, 32, 32, 10, 2 } };
-static const int kSpawnCount_grotte = 4;
-static const SpawnDef kSpawns_maison[] = { { "chat", 100, 320, 32, 32, 10000, 0 } };
-static const int kSpawnCount_maison = 1;
-static const SpawnDef kSpawns_aventure[] = { { "oiseau", 1000, 806, 32, 32, 10000, 0 }, { "oiseau", 2189, 1753, 32, 32, 10000, 0 }, { "poussin", 550, 696, 32, 32, 10000, 0 }, { "poussin", 326, 1618, 32, 32, 10000, 0 }, { "poussin", 1967, 2137, 32, 32, 10000, 0 } };
-static const int kSpawnCount_aventure = 5;
-
-struct LevelSpawns { const char* map; const SpawnDef* spawns; int count; };
-static const LevelSpawns kLevelSpawns[] = { { "grotte", kSpawns_grotte, kSpawnCount_grotte }, { "maison", kSpawns_maison, kSpawnCount_maison }, { "aventure", kSpawns_aventure, kSpawnCount_aventure } };
-static const int kLevelSpawnsCount = 3;
+// Types utilisables pour un PNJ : variantes dediees puis joueur
+static const CharDef* const kNpcDefs[] = { &kDef_sage, &kDef_gardien, &kDef_joueur };
+static const char* const kNpcNames[] = { "sage", "gardien", "joueur" };
+static const int kNpcDefCount = 3;

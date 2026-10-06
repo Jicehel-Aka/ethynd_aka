@@ -72,7 +72,7 @@ int main( int argc, char** argv )
 
     Game game( renderer, audio, source );
     game.setLanguage( lang.c_str() );
-    game.setQuitHint( lang == "en" ? "Esc: quit" : "Echap : quitter" );
+    game.setQuitHintKey( "ui.quit.pc" );
     if ( !game.init() ) {
         std::fprintf( stderr, "Chargement des assets impossible dans %s (convertis avec --tile 24 ?)\n", assets.c_str() );
         return 1;

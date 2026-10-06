@@ -29,14 +29,20 @@ void AkaRenderer::drawImage( int16_t x, int16_t y, ImageId id )
         gfx.drawImage( x, y, a.pixels, a.w, a.h, kColorKey );
 }
 
-void AkaRenderer::drawText( int16_t x, int16_t y, const char* text, RGBColor c, FontSize size )
+void AkaRenderer::drawText( int16_t x, int16_t y, const char* text, RGBColor c, FontSize size, int scale )
 {
     uint16_t pen = gfx.makeColor( c.r, c.g, c.b );
-    if ( size == FontSize::Wide ) {                    // 8x8 UTF-8 avec accents (composant aka_font)
-        gb_text::draw_utf8( x, y, text, [&]( int px, int py ) { gfx.drawPixel( px, py, pen ); } );
+    if ( scale < 1 ) scale = 1;
+    auto px = [&]( int ox, int oy ) {                       // pixel de la police, agrandi
+        if ( scale == 1 ) { gfx.drawPixel( x + ox, y + oy, pen ); return; }
+        gfx.setColor( pen );
+        gfx.fillRect( x + ox * scale, y + oy * scale, scale, scale );
+    };
+    if ( size == FontSize::Wide ) {                         // 8x8 UTF-8 avec accents (composant aka_font)
+        gb_text::draw_utf8( 0, 0, text, px );
         return;
     }
-    int16_t cx = x;
+    int16_t cx = 0;
     for ( const char* p = text; *p; ++p ) {
         uint8_t code = (uint8_t)*p;
         if ( code < 32 || code > 126 ) { cx += kNarrowCharAdvance; continue; }
@@ -44,7 +50,7 @@ void AkaRenderer::drawText( int16_t x, int16_t y, const char* text, RGBColor c, 
         for ( uint8_t dy = 0; dy < kSimple5x8Height; ++dy ) {
             uint8_t line = glyph[dy];
             for ( uint8_t dx = 0; dx < kSimple5x8Width; ++dx ) {
-                if ( line & 1 ) gfx.drawPixel( cx + dx, y + dy, pen );
+                if ( line & 1 ) px( cx + dx, dy );
                 line >>= 1;
             }
         }

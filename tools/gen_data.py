@@ -4,10 +4,12 @@
 Usage : python3 gen_data.py <dossier Ethynd> <sortie EthyndData.h>
 
 Extrait : animations/timings du joueur et des entites (noms de sprites, sans
-chemin ni extension) et les monstres de chaque niveau. Les zones de
-teleportation ne sont PAS dans les constantes (elles sont codees en dur dans
-fonctions/jeu.py) : elles sont reecrites dans Game.cpp.
+chemin ni extension), plus les variantes de PNJ (sage, gardien : memes animations que le
+joueur, sprites recolores par convert_assets.py, sans attaque).
+Les monstres, portes, PNJ, objets et l'histoire ne sont PLUS ici : ils viennent des
+fichiers de donnees de world/ (cartes + story.txt), lus a l'execution.
 """
+NPC_VARIANTS = ["sage", "gardien"]
 import os
 import sys
 import types
@@ -29,13 +31,22 @@ def main():
     sys.path.insert(0, src)
     from constantes import constantes_entite as ce
     from constantes import constantes_joueur as cj
-    from constantes import constantes_partie as cp
 
     # (id, timings{mov:[tick,last,libre,reset]}, anim{dir:{mov:[chemins]}})
     defs = [("joueur", cj.timings, cj.animation)]
     for ident in ce.animation["monstre"]:
         defs.append((ident, ce.timings["monstre"][ident],
                      ce.animation["monstre"][ident]))
+    monsters = [i for i, _, _ in defs[1:]]
+    for variant in NPC_VARIANTS:       # PNJ : sprites du joueur recolores, arret + marche
+        anim = {}
+        for d in DIRS:
+            anim[d] = {}
+            for m in ("base", "marche"):
+                anim[d][m] = ["%s_%s" % (variant, stem(p).split("_")[1])
+                              for p in cj.animation.get(d, {}).get(m, [])]
+        tim = {m: t for m, t in cj.timings.items() if m != "attaque"}
+        defs.append((variant, tim, anim))
 
     L = []
     w = L.append
@@ -78,30 +89,17 @@ def main():
         w("    },")
         w("};")
         w("")
-    ids = [i for i, _, _ in defs if i != "joueur"]
     w("static const CharDef* const kEntityDefs[] = { %s };"
-      % ", ".join("&kDef_" + i for i in ids))
+      % ", ".join("&kDef_" + i for i in monsters))
     w("static const char* const kEntityNames[] = { %s };"
-      % ", ".join('"%s"' % i for i in ids))
-    w("static const int kEntityDefCount = %d;" % len(ids))
+      % ", ".join('"%s"' % i for i in monsters))
+    w("static const int kEntityDefCount = %d;      // monstres (indices des compteurs de victimes)" % len(monsters))
     w("")
-    w("// Niveaux : monstres (deplacement aleatoire). Positions en pixels logiques (32 px/case)")
-    w("struct SpawnDef { const char* type; int16_t x, y, w, h; int16_t vie, attaque; };")
-    for nom, groupes in cp.niveau.items():
-        spawns = []
-        for typ, lst in groupes.items():
-            for (pos, taille, dep, vie, att) in lst:
-                assert dep == "aleatoire"
-                spawns.append('{ "%s", %d, %d, %d, %d, %d, %d }' % (
-                    typ, pos[0], pos[1], taille[0], taille[1], vie, att))
-        w("static const SpawnDef kSpawns_%s[] = { %s };" % (nom, ", ".join(spawns)))
-        w("static const int kSpawnCount_%s = %d;" % (nom, len(spawns)))
-    w("")
-    w("struct LevelSpawns { const char* map; const SpawnDef* spawns; int count; };")
-    items = ", ".join('{ "%s", kSpawns_%s, kSpawnCount_%s }' % (n, n, n)
-                      for n in cp.niveau)
-    w("static const LevelSpawns kLevelSpawns[] = { %s };" % items)
-    w("static const int kLevelSpawnsCount = %d;" % len(cp.niveau))
+    w("// Types utilisables pour un PNJ : variantes dediees puis joueur")
+    npcs = NPC_VARIANTS + ["joueur"]
+    w("static const CharDef* const kNpcDefs[] = { %s };" % ", ".join("&kDef_" + i for i in npcs))
+    w("static const char* const kNpcNames[] = { %s };" % ", ".join('"%s"' % i for i in npcs))
+    w("static const int kNpcDefCount = %d;" % len(npcs))
     open(out, "w").write("\n".join(L) + "\n")
     print("OK", out, len(L), "lignes")
 
