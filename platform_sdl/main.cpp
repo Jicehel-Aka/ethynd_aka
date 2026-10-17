@@ -1,15 +1,17 @@
 // main.cpp (build PC/SDL) -- Ethynd, meme coeur de jeu (shared/game) que la build AKA.
 //
-// Usage : ethynd_pc [zoom 2..4] [--assets <dossier>] [--lang fr|en]
+// Usage : ethynd_pc [zoom 2..4] [--assets <dossier>] [--lang fr|en|...] [--no-panel]
 //   Le dossier d'assets est celui produit par tools/convert_assets.py (le meme que sur la SD :
 //   /sdcard/Ethynd). Par defaut : "Ethynd" a cote de l'executable, sinon ../sdcard_files/Ethynd.
 // Touches : fleches ou ZQSD (deplacement), X / Espace / Entree = A (attaquer, valider),
-//   C ou H = aide, Retour arriere ou B = retour, M = couper le son, Echap = quitter.
+//   C ou H = aide, Retour arriere ou B = retour, F3 = diagnostic (FPS), M = couper le son, Echap = quitter.
 #include "SdlRenderer.h"
 #include "SdlInput.h"
 #include "SdlAudio.h"
 #include "FileAssetSource.h"
 #include "Game.h"
+#include "FixedStep.h"
+#include "ControlPanel.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -17,6 +19,8 @@
 #include <string>
 #include <sys/stat.h>
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -46,14 +50,17 @@ bool dirExists( const std::string& d ) { struct stat st; return stat( ( d + "/ti
 
 int main( int argc, char** argv )
 {
-    int zoom = 3;
+    int zoom = 0;                                    // 0 = defaut : 2 avec le panneau de boutons, 3 sans
+    bool usePanel = true;
     std::string assets, lang = "fr";
     for ( int i = 1; i < argc; i++ ) {
         if ( !strcmp( argv[i], "--assets" ) && i + 1 < argc ) assets = argv[++i];
         else if ( !strcmp( argv[i], "--lang" ) && i + 1 < argc ) lang = argv[++i];
+        else if ( !strcmp( argv[i], "--no-panel" ) ) usePanel = false;
         else if ( std::atoi( argv[i] ) >= 2 && std::atoi( argv[i] ) <= 4 ) zoom = std::atoi( argv[i] );
         else std::fprintf( stderr, "argument ignore : %s\n", argv[i] );
     }
+    if ( zoom == 0 ) zoom = usePanel ? 2 : 3;
     if ( assets.empty() ) {
         const std::string exe = exeDirectory();
         for ( const std::string& c : { exe + "/Ethynd", exe + "/../sdcard_files/Ethynd", std::string( "Ethynd" ), std::string( "sdcard_files/Ethynd" ) } )
@@ -64,9 +71,16 @@ int main( int argc, char** argv )
         return 1;
     }
 
-    SdlRenderer renderer( zoom );
+    // Panneau de boutons SOUS la zone de jeu : nom du jeu, croix + A B C D dessines, rappel des touches PC. Cliquables
+    // a la souris et au doigt ; les textes suivent la langue du jeu (cles pc.* de world/lang).
+    ControlPanel* panel = usePanel ? new ControlPanel( zoom ) : nullptr;
+    SdlRenderer renderer( zoom, panel ? panel->height() : 0 );
     if ( !renderer.ok() ) return 1;
     SdlInput input;
+    if ( panel ) {
+        renderer.attachPanel( panel->fb.data() );
+        input.attachPad( [panel]( int x, int y ) { return panel->hit( x, y ); }, renderer.gameHeightPx(), renderer.windowWidth(), renderer.windowHeight() );
+    }
     SdlAudio audio( assets + "/audio" );
     FileAssetSource source( assets );
 
@@ -74,28 +88,23 @@ int main( int argc, char** argv )
     game.setLanguage( lang.c_str() );
     game.setQuitHintKey( "ui.quit.pc" );
     if ( !game.init() ) {
-        std::fprintf( stderr, "Chargement des assets impossible dans %s (convertis avec --tile 24 ?)\n", assets.c_str() );
+        std::fprintf( stderr, "Chargement des assets impossible dans %s : %s (convertis avec --tile 24 ?)\n", assets.c_str(), game.initError() );
         return 1;
     }
 
-    const uint32_t kTickMs = 1000 / kTick;          // 33 ms : un tick logique, comme tick(30) de pygame
-    uint32_t last = SDL_GetTicks(), acc = 0;
+    FixedStep step( 1000 / kTick );                  // 33 ms : un tick logique, comme tick(30) de pygame
+    step.reset( SDL_GetTicks() );
     while ( true ) {
-        input.poll();
+        input.pump();                                // evenements : a chaque tour de boucle
         if ( input.quitRequested() ) break;
         if ( input.toggleMuteRequested() ) audio.setMuted( !audio.muted() );
-
-        uint32_t now = SDL_GetTicks();
-        acc += now - last;
-        last = now;
-        if ( acc > 4 * kTickMs ) acc = 4 * kTickMs;  // pas de rattrapage infini apres une pause
-        while ( acc >= kTickMs ) {
-            game.update( input );
-            acc -= kTickMs;
-        }
+        // l'entree est lue A CHAQUE TICK (voir FixedStep.h), pas a chaque tour de boucle
+        step.advance( SDL_GetTicks(), [&]() { input.poll(); game.update( input ); } );
         game.render();
+        if ( panel ) panel->draw( input.state(), [&game]( const std::string& key ) { return std::string( game.tr( key ) ); } );
         renderer.present();
         SDL_Delay( 1 );
     }
+    delete panel;
     return 0;
 }

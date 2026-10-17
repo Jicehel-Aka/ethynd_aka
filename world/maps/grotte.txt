@@ -117,7 +117,9 @@ spawn chauve_souris 269 315 10 2
 spawn chauve_souris 484 384 10 2
 spawn chauve_souris 770 450 10 2
 spawn chauve_souris 684 584 10 2
+spawn dragon_rouge 202 622 60 4 170
 door 100 853 88 11 aventure 1423 713 - -
 door 718 364 37 28 maison 320 378 - -
-item crystal 96 640
+item crystal 96 640 dragon
+item potion 416 640
 item potion 416 256

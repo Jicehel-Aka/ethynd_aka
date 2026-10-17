@@ -3,6 +3,7 @@
 // 1 = joueur, 2 = monstres, 3 = interface.
 #pragma once
 #include <string>
+#include <SDL2/SDL.h>          // SDL_INIT_AUDIO, SDL_InitSubSystem : SDL_mixer.h ne l'inclut pas sous Windows
 #include <SDL2/SDL_mixer.h>
 #include "IAudio.h"
 
@@ -23,6 +24,6 @@ class SdlAudio : public IAudio {
     std::string dir;
     bool opened = false, isMuted = false;
     Mix_Music* music[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-    Mix_Chunk* sfx[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+    Mix_Chunk* sfx[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
     Music current = Music::None;
 };

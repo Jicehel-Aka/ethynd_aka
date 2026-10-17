@@ -3,7 +3,7 @@
 generate_extended_font.py
 
 Génère font8x8_extended.h : glyphes 8x8 pour les caractères accentués
-français/allemands/espagnols, construits en ajoutant un accent à la lettre
+français/allemands/espagnols/italiens/portugais, construits en ajoutant un accent à la lettre
 de base réelle de font8x8_basic.h (pas de glyphes inventés à l'aveugle).
 
 Usage : python3 generate_extended_font.py
@@ -30,7 +30,8 @@ Technique :
   base existante à modifier ; repli sur "oe"/"OE" (deux caractères) au
   niveau du rendu (voir gb_text_render.h), pas ici.
 
-Pour ajouter d'autres caractères (portugais, italien, etc.) : ajouter une
+Couverture actuelle : français, espagnol, allemand, italien, portugais (+ « » ° ß ¿ ¡).
+Pour ajouter d'autres caractères : ajouter une
 entrée dans GLYPHS ci-dessous en réutilisant les fonctions accent_lower/
 accent_upper existantes, puis relancer ce script.
 """
@@ -124,6 +125,28 @@ GLYPHS[0x00CD] = acute_upper('I')       # Í
 GLYPHS[0x00D3] = acute_upper('O')       # Ó
 GLYPHS[0x00DA] = acute_upper('U')       # Ú
 GLYPHS[0x00D1] = tilde_upper('N')       # Ñ
+
+# Allemand : trema sur a, o (le u existe deja ci-dessus)
+GLYPHS[0x00E4] = diaeresis_lower('a')   # ä
+GLYPHS[0x00F6] = diaeresis_lower('o')   # ö
+GLYPHS[0x00C4] = diaeresis_upper('A')   # Ä
+GLYPHS[0x00D6] = diaeresis_upper('O')   # Ö
+
+# Italien : accent grave sur i, o (a, e, u existent deja)
+GLYPHS[0x00EC] = grave_lower('i')       # ì
+GLYPHS[0x00F2] = grave_lower('o')       # ò
+GLYPHS[0x00CC] = grave_upper('I')       # Ì
+GLYPHS[0x00D2] = grave_upper('O')       # Ò
+
+# Portugais : tilde sur a, o (les autres accents existent deja)
+GLYPHS[0x00E3] = tilde_lower('a')       # ã
+GLYPHS[0x00F5] = tilde_lower('o')       # õ
+GLYPHS[0x00C3] = tilde_upper('A')       # Ã
+GLYPHS[0x00D5] = tilde_upper('O')       # Õ
+
+# Signe degre : petit cercle en haut du glyphe
+GLYPHS[0x00B0] = [0b00001100, 0b00010010, 0b00010010, 0b00001100,
+                  0b00000000, 0b00000000, 0b00000000, 0b00000000]  # °
 
 # Glyphes dedies (pas d'accent sur lettre de base)
 GLYPHS[0x00DF] = [0b00011100, 0b00100010, 0b00100010, 0b00101100,

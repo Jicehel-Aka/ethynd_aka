@@ -35,6 +35,8 @@ void GameMap::update()
 
 bool GameMap::collidesWorld( const Rect& r ) const
 {
+    // Le bord de la carte est un mur : l'original laissait le joueur et les monstres sortir dans le vide.
+    if ( r.x < 0 || r.y < 0 || r.x + r.w > data.w * kTileLogic || r.y + r.h > data.h * kTileLogic ) return true;
     int tx0 = floorDiv( r.x, kTileLogic ), tx1 = floorDiv( r.x + r.w - 1, kTileLogic );
     int ty0 = floorDiv( r.y, kTileLogic ), ty1 = floorDiv( r.y + r.h - 1, kTileLogic );
     if ( tx0 < 0 ) tx0 = 0;

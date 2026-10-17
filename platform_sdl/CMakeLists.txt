@@ -4,6 +4,12 @@ project(ethynd_pc CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# MSVC : sources en UTF-8 (commentaires et chaines accentues)
+if ( MSVC )
+    add_compile_options(/utf-8)
+    add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)   # windows.h : pas de min/max, pas d'avertissements fopen
+endif()
+
 find_package(SDL2 REQUIRED)
 find_package(SDL2_mixer REQUIRED)       # musiques MP3 et effets WAV (SDL2_image inutile : les assets sont des .bin)
 
@@ -12,6 +18,7 @@ add_executable(ethynd_pc
     SdlRenderer.cpp
     SdlInput.cpp
     SdlAudio.cpp
+    ControlPanel.cpp
     ../shared/game/Game.cpp
     ../shared/game/GameMap.cpp
     ../shared/game/Characters.cpp

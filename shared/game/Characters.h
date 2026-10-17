@@ -29,6 +29,11 @@ struct Monster {
     int wx = 0, wy = 0;              // position MONDE logique (coin haut-gauche, 32x32)
     int vie = 0, attaque = 0;
     int typeIdx = -1;                // index dans kEntityNames (compteur de victimes)
+    int spawnIdx = -1;               // rang dans la liste des monstres de la carte (memoire des boss vaincus)
+    int size = 32;                   // cote de la hitbox carree, en pixels logiques (taille du sprite : 56 pour le dragon)
+    int homeX = 0, homeY = 0;        // point d'attache (coin haut-gauche)
+    int radius = 0;                  // > 0 : gardien de zone : poursuit le joueur sans s'eloigner de plus de `radius` px de son point d'attache
+    bool boss() const { return radius > 0; }
     int compteurAction = 0;          // direction choisie : 0 haut, 1 gauche, 2 bas, 3 droite
     ImageId sprite = kInvalidImageId;
     bool alive() const { return vie > 0; }
@@ -44,7 +49,7 @@ struct Npc {
     Rect rect() const { return Rect{ wx, wy, 32, 32 }; }
 };
 // objet ramassable pose sur la carte
-struct MapItem { int def = 0; int wx = 0, wy = 0; bool taken = false; Rect rect() const { return Rect{ wx + 4, wy + 4, 24, 24 }; } };
+struct MapItem { int def = 0; int wx = 0, wy = 0; bool taken = false; int reqObj = -1; Rect rect() const { return Rect{ wx + 4, wy + 4, 24, 24 }; } };
 
 ImageId staticSprite( const ResolvedChar* rc, Dir d );     // image fixe (arret, sinon 1re image de marche)
 
@@ -71,6 +76,7 @@ class Player {
     const ResolvedChar* rc = nullptr;
     Animator a;
     bool blesser = false;
+    int  hurtTimer = 0;              // ticks passes en contact depuis le dernier coup
     bool attackActive = false;
     Rect swordRect { kLogicCx - 20, kLogicCy - 22, 32, 22 };   // rect "obsolete" initial d'Ethynd
     ImageId sprite = kInvalidImageId;
@@ -83,5 +89,6 @@ uint32_t gameRandom();
 void gameRandomSeed( uint32_t s );
 
 // Port de Entite.deplacement() + afficher() pour un monstre.
-void monsterUpdate( Monster& m, const GameMap& map );
+// player : hitbox MONDE du joueur (poursuite des gardiens de zone)
+void monsterUpdate( Monster& m, const GameMap& map, const std::vector<Rect>& blockers, const Rect& player );
 void monsterDraw( const Monster& m, const GameMap& map, IRenderer& r );

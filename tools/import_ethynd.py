@@ -31,6 +31,10 @@ LOCKED = {("maison", "grotte"): "deny_cave_house", ("aventure", "grotte"): "deny
 # Deux chauves-souris de l'original apparaissent DANS un mur (bloquees pour toujours) : decalees
 SPAWN_FIX = {("grotte", 500, 400): (484, 384), ("grotte", 700, 600): (684, 584)}
 
+# Le dragon rouge d'Ethynd etait defini (sprites, son) mais jamais place : il devient le gardien du Cristal, dans le coin
+# sud-ouest de la grotte (salle choisie par l'outil de verification d'atteignabilite). rayon > 0 = gardien de zone.
+EXTRA_SPAWNS = [("grotte", {"type": "dragon_rouge", "x": 202, "y": 622, "vie": 60, "attaque": 4, "rayon": 170})]
+
 START = ("maison", 320 - 14, 253 - 93, "bas")
 MUSIC = {"maison": "maison", "aventure": "aventure", "grotte": "grotte"}
 
@@ -41,7 +45,8 @@ NPCS = [
     ("aventure", {"id": "gardien", "type": "gardien", "x": 1486, "y": 764, "dir": "bas", "rules": "gardien_talk"}),
 ]
 ITEMS = [
-    ("grotte", {"id": "crystal", "x": 96, "y": 640}),
+    ("grotte", {"id": "crystal", "x": 96, "y": 640, "after": "dragon"}),   # le Cristal n'apparait qu'une fois le dragon vaincu
+    ("grotte", {"id": "potion", "x": 416, "y": 640}),                      # avant la salle du dragon
     ("grotte", {"id": "potion", "x": 416, "y": 256}),
     ("aventure", {"id": "potion", "x": 984, "y": 832}),
     ("aventure", {"id": "potion", "x": 1500, "y": 1300}),
@@ -78,6 +83,9 @@ def main():
             for (pos, taille, dep, vie, att) in lst:
                 x, y = SPAWN_FIX.get((name, pos[0], pos[1]), (pos[0], pos[1]))
                 m["spawns"].append({"type": typ, "x": x, "y": y, "vie": vie, "attaque": att})
+        for (mp, sp) in EXTRA_SPAWNS:
+            if mp == name:
+                m["spawns"].append(dict(sp))
         for (mp, (x0, x1, y0, y1), dest, (cx, cy)) in ZONES:
             if mp != name:
                 continue

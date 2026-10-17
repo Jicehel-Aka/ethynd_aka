@@ -73,5 +73,6 @@ void AkaAudio::applySfx( Sfx s )
         case Sfx::Attack:     playWav( playerTrack, file( "joueur_attaque.wav" ) ); break;
         case Sfx::Hurt:       playWav( playerTrack, file( "joueur_blessure.wav" ) ); break;
         case Sfx::MonsterHit: if ( !monsterTrack.is_playing() ) playWav( monsterTrack, file( "monstre_chauve_souris.wav" ) ); break;
+        case Sfx::BossHit:    if ( !monsterTrack.is_playing() ) playWav( monsterTrack, file( "monstre_dragon_rouge.wav" ) ); break;
     }
 }

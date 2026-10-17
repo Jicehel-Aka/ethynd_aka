@@ -30,21 +30,22 @@ Repères : petit carré rouge = tuile à collision, point jaune dans la palette 
 | **V** | sélectionner / déplacer (pas de 8 px) ; **M** monstre · **N** PNJ · **T** objet : un clic le place |
 | **D** | porte : glisser un rectangle · **S** : point de départ du joueur |
 | flèches (Maj : 32 px) · **Suppr** · **, .** | déplacer · supprimer · changer le type (monstre, PNJ, objet, carte de destination) |
+| **L** (porte sélectionnée) | choisir la **destination** en cliquant sur la carte d'arrivée (Échap annule) : `dx dy` = centre de la case cliquée |
 | **P** | modifier les propriétés sur **une ligne de texte** (voir ci-dessous) ; Entrée valide, Échap annule |
 
 Lignes de propriétés (les mêmes que dans le fichier, sans le mot-clé) ; une valeur invalide est **refusée**
 avec un message :
-- monstre : `type x y vie attaque` (attaque 0 = inoffensif)
+- monstre : `type x y vie attaque [rayon]` (attaque 0 = inoffensif ; avec un **rayon**, c'est un gardien de zone / boss : il poursuit le joueur dans sa zone)
 - PNJ : `id type x y direction règles` — règles : `drapeau?dialogue;!drapeau?dialogue;has:objet?dialogue;dialogue`
 - porte : `x y largeur hauteur carte dx dy drapeau|- dialogue|-` — `dx dy` = où arrive le joueur (centre de sa
   hitbox) ; `drapeau` = condition d'ouverture, `dialogue` = ce qui s'affiche si c'est fermé
-- objet : `id x y` · départ : `x y direction`
+- objet : `id x y [objectif]` (avec un objectif : n'apparaît qu'une fois celui-ci terminé) · départ : `x y direction`
 
 Positions en **pixels logiques** (32 px par case, comme Ethynd) : une case (3, 5) commence en (96, 160).
 
 ## Cartes et fichiers
 **Tab / Maj+Tab** carte suivante / précédente · **Ctrl+N** nouvelle carte (`nom largeur hauteur`, minuscules,
-chiffres et `_`) · **Ctrl+M** musique · **Ctrl+Z / Ctrl+Y** annuler / rétablir (60 niveaux par carte) ·
+chiffres et `_`) · **Ctrl+R** redimensionner (contenu ancré en haut à gauche) · **Ctrl+M** musique · **Ctrl+Z / Ctrl+Y** annuler / rétablir (60 niveaux par carte) ·
 **Ctrl+S** enregistrer · **F9** reconstruire le jeu · **H** aide. Fermer la fenêtre avec des modifications non
 enregistrées demande confirmation (fermer une deuxième fois pour quitter).
 

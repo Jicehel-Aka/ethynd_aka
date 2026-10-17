@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-struct EdSpawn { std::string type; int x = 0, y = 0, vie = 10, attaque = 1; };
+struct EdSpawn { std::string type; int x = 0, y = 0, vie = 10, attaque = 1, rayon = 0; };   // rayon > 0 : gardien de zone (boss)
 struct EdNpc   { std::string id, type, dir = "bas", rules = "-"; int x = 0, y = 0; };
 struct EdDoor  { int x = 0, y = 0, w = 32, h = 32; std::string map, requires_ = "-", deny = "-"; int dx = 0, dy = 0; };
-struct EdItem  { std::string id; int x = 0, y = 0; };
+struct EdItem  { std::string id; int x = 0, y = 0; std::string after = "-"; };          // after : objectif a terminer avant son apparition
 
 struct EdMap {
     std::string name, music = "none";

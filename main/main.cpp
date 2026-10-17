@@ -14,10 +14,15 @@
 #include "core/input.h"
 #include "aka_runtime/aka_runtime.h"
 #include "PlatformTime.h"
+#include "FixedStep.h"
 #include <string.h>
+#include "esp_log.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+static const char* TAG = "ethynd";
 gb_core           g_core;
 gb_graphics       gfx;
 gb_audio_player   g_audio_player;
@@ -74,19 +79,27 @@ extern "C" void app_main( void )
     game.setQuitHintKey( "ui.quit.aka" );
     game.setLanguage( akaRuntime.getLanguage() );
     if ( !game.init() ) {
-        fatalScreen( "Ethynd : assets introuvables", "Copier sdcard_files/Ethynd sur la SD" );
+        fatalScreen( "Ethynd: assets not found on SD", game.initError() );
         while ( true ) vTaskDelay( pdMS_TO_TICKS( 1000 ) );
     }
 
-    const uint32_t kTickMs = 1000 / kTick;           // 33 ms : un tick logique
-    uint32_t last = platformMillis(), acc = 0;
+    // Diagnostic : bouton D = FPS + memoire libre a l'ecran ; journal serie toutes les 5 s (idf.py monitor)
+    game.setDebugProvider( []( char* b, size_t n ) {
+        snprintf( b, n, "H%luk P%luk", (unsigned long)( esp_get_free_heap_size() / 1024 ),
+                  (unsigned long)( heap_caps_get_free_size( MALLOC_CAP_SPIRAM ) / 1024 ) );
+    } );
+    ESP_LOGI( TAG, "init ok : langue=%s, heap libre=%lu o, PSRAM libre=%lu o", akaRuntime.getLanguage(),
+              (unsigned long)esp_get_free_heap_size(), (unsigned long)heap_caps_get_free_size( MALLOC_CAP_SPIRAM ) );
+
+    FixedStep step( 1000 / kTick );                   // 33 ms : un tick logique
+    step.reset( platformMillis() );
+    uint32_t logStart = platformMillis(), frames = 0, ticks = 0;
     char lastLang[8] = "";
     while ( true ) {
         Keys keys;
         input_poll( keys );                           // AVANT akaRuntime.update() (voir Dark & Under)
         if ( !akaRuntime.update( keys ) ) {           // menu systeme ouvert : le jeu est en pause
-            last = platformMillis();
-            acc = 0;
+            step.reset( platformMillis() );
             continue;
         }
         // Langue du menu systeme : textes des ecrans de menu du jeu (FR par defaut)
@@ -95,17 +108,18 @@ extern "C" void app_main( void )
             strncpy( lastLang, lang, sizeof lastLang - 1 );
             game.setLanguage( lang );             // code du menu systeme : fr, en, ... (repli sur fr si pas de lang/<code>.bin)
         }
-
-        uint32_t now = platformMillis();
-        acc += now - last;
-        last = now;
-        if ( acc > 4 * kTickMs ) acc = 4 * kTickMs;   // pas de rattrapage infini apres une pause
-        input.poll();
-        while ( acc >= kTickMs ) {
-            game.update( input );
-            acc -= kTickMs;
-        }
+        // L'entree est lue A CHAQUE TICK (voir FixedStep.h), pas une fois par tour de boucle
+        ticks += step.advance( platformMillis(), [&]() { input.poll(); game.update( input ); } );
         game.render();
         renderer.present();
+        frames++;
+
+        uint32_t now = platformMillis();
+        if ( now - logStart >= 5000 ) {
+            ESP_LOGI( TAG, "fps=%u tps=%u heap=%lu min=%lu psram=%lu", (unsigned)( frames * 1000 / ( now - logStart ) ),
+                      (unsigned)( ticks * 1000 / ( now - logStart ) ), (unsigned long)esp_get_free_heap_size(),
+                      (unsigned long)esp_get_minimum_free_heap_size(), (unsigned long)heap_caps_get_free_size( MALLOC_CAP_SPIRAM ) );
+            logStart = now; frames = ticks = 0;
+        }
     }
 }

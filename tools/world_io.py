@@ -120,8 +120,9 @@ def parse_map(path):
             layer, row = int(t[1]), 0
             if not 0 <= layer <= 3:
                 _err(path, n, "couche 0..3")
-        elif k == "spawn" and len(t) == 6:
-            m["spawns"].append({"type": t[1], "x": int(t[2]), "y": int(t[3]), "vie": int(t[4]), "attaque": int(t[5])})
+        elif k == "spawn" and len(t) in (6, 7):      # rayon facultatif : monstre "gardien de zone" (boss)
+            m["spawns"].append({"type": t[1], "x": int(t[2]), "y": int(t[3]), "vie": int(t[4]), "attaque": int(t[5]),
+                                "rayon": int(t[6]) if len(t) == 7 else 0})
         elif k == "npc" and len(t) == 7:
             if t[5] not in DIRS:
                 _err(path, n, "direction inconnue %r" % t[5])
@@ -129,8 +130,8 @@ def parse_map(path):
         elif k == "door" and len(t) == 10:
             m["doors"].append({"x": int(t[1]), "y": int(t[2]), "w": int(t[3]), "h": int(t[4]), "map": t[5],
                                "dx": int(t[6]), "dy": int(t[7]), "requires": t[8], "deny": t[9]})
-        elif k == "item" and len(t) == 4:
-            m["items"].append({"id": t[1], "x": int(t[2]), "y": int(t[3])})
+        elif k == "item" and len(t) in (4, 5):       # objectif facultatif : l'objet n'apparait qu'une fois cet objectif termine
+            m["items"].append({"id": t[1], "x": int(t[2]), "y": int(t[3]), "after": t[4] if len(t) == 5 else "-"})
         else:
             _err(path, n, "ligne inconnue ou incomplete : %s" % s)
     if m is None:
@@ -146,14 +147,15 @@ def write_map(path, m):
             for r in m["layers"][i]:
                 f.write(",".join(str(v) for v in r) + "\n")
         for s in m["spawns"]:
-            f.write("spawn %s %d %d %d %d\n" % (s["type"], s["x"], s["y"], s["vie"], s["attaque"]))
+            f.write("spawn %s %d %d %d %d%s\n" % (s["type"], s["x"], s["y"], s["vie"], s["attaque"],
+                                                  " %d" % s["rayon"] if s.get("rayon", 0) > 0 else ""))
         for s in m["npcs"]:
             f.write("npc %s %s %d %d %s %s\n" % (s["id"], s["type"], s["x"], s["y"], s["dir"], s["rules"]))
         for d in m["doors"]:
             f.write("door %d %d %d %d %s %d %d %s %s\n" % (d["x"], d["y"], d["w"], d["h"], d["map"], d["dx"], d["dy"],
                                                            d["requires"], d["deny"]))
         for s in m["items"]:
-            f.write("item %s %d %d\n" % (s["id"], s["x"], s["y"]))
+            f.write("item %s %d %d%s\n" % (s["id"], s["x"], s["y"], " " + s["after"] if s.get("after", "-") != "-" else ""))
 
 
 # ------------------------------------------------------------------ langues
@@ -278,6 +280,8 @@ def validate(world, maps, story, langs=None, entity_names=()):
         for s in m["items"]:
             if s["id"] not in items:
                 errs.append("%s : objet inconnu %s" % (name, s["id"]))
+            if s.get("after", "-") != "-" and s["after"] not in objs:
+                errs.append("%s : objet %s, objectif inconnu %s" % (name, s["id"], s["after"]))
         for s in m["spawns"]:
             if entity_names and s["type"] not in entity_names:
                 errs.append("%s : monstre inconnu %s" % (name, s["type"]))

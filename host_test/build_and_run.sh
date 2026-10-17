@@ -13,3 +13,9 @@ g++ -std=gnu++17 -O1 -Wall -Wextra $SAN -DETHYND_HOST_TEST \
     "$HERE/host_main.cpp" "$S/game/Game.cpp" "$S/game/GameMap.cpp" \
     "$S/game/Characters.cpp" "$S/game/AssetStore.cpp" "$S/game/World.cpp" "$S/game/Lang.cpp" -o "${TMPDIR:-/tmp}/ethynd_test"
 "${TMPDIR:-/tmp}/ethynd_test" "$ASSETS" "$SHOTS" "${@:3}"
+
+# panneau de boutons de la version PC : zones tactiles, suivi des pointeurs, captures
+g++ -std=gnu++17 -O1 -Wall -Wextra $SAN \
+    -I"$S/platform" -I"$HERE/../platform_sdl" -I"$HERE/../editor" ${AKA_FONT_INC:+-I"$AKA_FONT_INC"} \
+    "$HERE/panel_test.cpp" "$HERE/../platform_sdl/ControlPanel.cpp" "$HERE/../editor/WorldText.cpp" -o "${TMPDIR:-/tmp}/ethynd_panel_test"
+"${TMPDIR:-/tmp}/ethynd_panel_test" "$HERE/../world" "$SHOTS"

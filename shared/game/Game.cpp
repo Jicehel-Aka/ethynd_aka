@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "PlatformTime.h"
 #include <cstring>
 #include <cstdio>
 #include <algorithm>
@@ -90,9 +91,13 @@ void Game::setLanguage( const char* code )
 
 bool Game::init()
 {
-    if ( !assets.load( source, renderer ) ) return false;
-    if ( !world.load( source ) ) return false;
-    if ( !lang.load( source, langCode.c_str() ) ) return false;
+    auto fail = [&]( const char* what ) {
+        initErr = source.lastFailed.empty() ? std::string( what ) : "Missing: " + source.lastFailed;
+        return false;
+    };
+    if ( !assets.load( source, renderer ) ) return fail( "tiles / sprites / menus (assets)" );
+    if ( !world.load( source ) ) return fail( "world.bin (monde)" );
+    if ( !lang.load( source, langCode.c_str() ) ) return fail( "lang/fr.bin (langues)" );
 
     playerChar.resolve( &kDef_joueur, assets );
     for ( int i = 0; i < kEntityDefCount && i < 8; i++ ) entityChars[i].resolve( kEntityDefs[i], assets );
@@ -122,13 +127,23 @@ bool Game::enterMap( int idx, int camX, int camY )
     const MapObjects& ob = gmap.objects();
     audio.playMusic( (Music)( ob.music <= 4 ? ob.music : 0 ) );
 
+    if ( bossDown.size() < world.mapNames.size() ) bossDown.resize( world.mapNames.size() );
+    bossDown[idx].resize( ob.spawns.size(), 0 );
     monsters.clear();
-    for ( const SpawnObj& s : ob.spawns ) {
+    for ( size_t si = 0; si < ob.spawns.size(); si++ ) {
+        const SpawnObj& s = ob.spawns[si];
+        if ( s.radius > 0 && bossDown[idx][si] ) continue;                 // boss deja vaincu : il ne revient pas
         for ( int t = 0; t < kEntityDefCount && t < 8; t++ ) {
             if ( s.type != kEntityNames[t] ) continue;
             Monster m;
-            m.rc = &entityChars[t]; m.typeIdx = t;
+            m.rc = &entityChars[t]; m.typeIdx = t; m.spawnIdx = (int)si;
             m.wx = s.x; m.wy = s.y; m.vie = s.vie; m.attaque = s.attaque;
+            m.homeX = s.x; m.homeY = s.y; m.radius = s.radius;
+            ImageId im = entityChars[t].img[DIR_BAS][MOV_MARCHE][0];          // taille de la hitbox = taille du sprite
+            if ( im == kInvalidImageId ) im = entityChars[t].img[DIR_BAS][MOV_BASE][0];
+            int16_t sw = 32, sh = 32;
+            if ( im != kInvalidImageId ) renderer.getImageSize( im, sw, sh );
+            m.size = std::max( 16, ( sw * kTileLogic + kTileShow / 2 ) / kTileShow );   // 24 px affiches = 32 logiques ; 42 = 56 (dragon)
             monsters.push_back( m );
         }
     }
@@ -148,7 +163,7 @@ bool Game::enterMap( int idx, int camX, int camY )
     taken[idx].resize( ob.items.size(), 0 );
     items.clear();
     for ( size_t i = 0; i < ob.items.size(); i++ ) {
-        MapItem m; m.def = ob.items[i].def; m.wx = ob.items[i].x; m.wy = ob.items[i].y; m.taken = taken[idx][i] != 0;
+        MapItem m; m.def = ob.items[i].def; m.wx = ob.items[i].x; m.wy = ob.items[i].y; m.taken = taken[idx][i] != 0; m.reqObj = ob.items[i].after;
         items.push_back( m );
     }
     doorsArmed = false;                                  // pas de rebond : la porte d'arrivee est inactive tant qu'on est dessus
@@ -159,6 +174,7 @@ void Game::startGame()
 {
     qs = QuestState();
     taken.clear();
+    bossDown.clear();
     toastQueue.clear(); toast.clear(); toastTicks = 0;
     winPending = false;
     player.init( &playerChar );
@@ -350,7 +366,7 @@ void Game::checkItems()
     Rect p = playerWorld();
     for ( size_t i = 0; i < items.size(); i++ ) {
         MapItem& m = items[i];
-        if ( m.taken || m.def < 0 || m.def >= (int)world.items.size() ) continue;
+        if ( m.taken || m.def < 0 || m.def >= (int)world.items.size() || !itemAvailable( m ) ) continue;
         if ( !rectsOverlap( p, m.rect() ) ) continue;
         const ItemDef& def = world.items[m.def];
         if ( def.heal > 0 ) {
@@ -384,12 +400,13 @@ void Game::updatePlaying( const IInput& input )
     // gerer_monstres() : l'epee de l'attaque PRECEDENTE enleve 1 de vie par tick de contact
     for ( Monster& m : monsters ) {
         if ( !m.alive() ) continue;
-        if ( player.swordActive() && rectsOverlap( player.sword(), Rect{ m.wx + gmap.camX, m.wy + gmap.camY, 32, 32 } ) ) {
+        if ( player.swordActive() && rectsOverlap( player.sword(), Rect{ m.wx + gmap.camX, m.wy + gmap.camY, m.size, m.size } ) ) {
             m.vie -= 1;
-            audio.playSfx( Sfx::MonsterHit );
+            audio.playSfx( m.boss() ? Sfx::BossHit : Sfx::MonsterHit );
             if ( m.vie <= 0 && m.typeIdx >= 0 && m.typeIdx < kMaxKillTypes ) qs.kills[m.typeIdx]++;
+            if ( m.vie <= 0 && m.boss() && mapIdx >= 0 && m.spawnIdx >= 0 ) bossDown[mapIdx][m.spawnIdx] = 1;
         }
-        monsterUpdate( m, gmap );
+        monsterUpdate( m, gmap, blockers, playerWorld() );
     }
 
     player.update( gmap, monsters, audio );
@@ -404,6 +421,8 @@ void Game::updatePlaying( const IInput& input )
 
 void Game::update( const IInput& input )
 {
+    if ( input.justPressed( &InputState::actionD ) ) showDebug = !showDebug;     // diagnostic : FPS et memoire
+    dbgTicks++;
     if ( toastTicks > 0 ) toastTicks--;
     else if ( !toastQueue.empty() ) { toast = toastQueue.front(); toastQueue.erase( toastQueue.begin() ); toastTicks = 75; }
 
@@ -551,7 +570,27 @@ void Game::drawMenuScreens()
     }
 }
 
+void Game::drawDebug()
+{
+    char l1[40], l2[40] = "";
+    snprintf( l1, sizeof l1, "FPS %d  TPS %d", dbgFps, dbgTps );
+    if ( debugExtra ) debugExtra( l2, sizeof l2 ); else snprintf( l2, sizeof l2, "%s %s", lang.code(), current == Screen::Playing ? gmap.name() : "" );
+    const int w = std::max( utf8Len( l1 ), utf8Len( l2 ) ) * kCharW + 4;
+    renderer.fillRect( 0, kScreenH - 22, (int16_t)w, 22, RGBColor{ 0, 0, 0 } );
+    textAt( 2, kScreenH - 21, l1, RGBColor{ 255, 80, 80 } );
+    textAt( 2, kScreenH - 11, l2, RGBColor{ 255, 80, 80 } );
+}
+
 void Game::render()
+{
+    renderDispatch();
+    dbgFrames++;
+    uint32_t now = platformMillis();
+    if ( now - dbgLastMs >= 1000 ) { dbgFps = dbgFrames; dbgTps = dbgTicks; dbgFrames = dbgTicks = 0; dbgLastMs = now; }
+    if ( showDebug ) drawDebug();
+}
+
+void Game::renderDispatch()
 {
     switch ( current ) {
         case Screen::Menu: case Screen::Help: case Screen::Dead: case Screen::Win:
@@ -567,7 +606,7 @@ void Game::render()
             auto sx = [&]( int wx ) { return ox + floorDiv( wx * kTileShow, kTileLogic ); };
             auto sy = [&]( int wy ) { return oy + floorDiv( wy * kTileShow, kTileLogic ); };
             for ( const MapItem& m : items ) {
-                if ( m.taken || m.def < 0 || m.def >= (int)itemIcons.size() ) continue;
+                if ( m.taken || m.def < 0 || m.def >= (int)itemIcons.size() || !itemAvailable( m ) ) continue;
                 renderer.drawImage( sx( m.wx ), sy( m.wy ), itemIcons[m.def] );
             }
             for ( const Npc& n : npcs ) renderer.drawImage( sx( n.wx ), sy( n.wy ), n.sprite );

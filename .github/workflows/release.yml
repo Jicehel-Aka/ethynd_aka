@@ -1,0 +1,161 @@
+name: Release
+
+# Fabrique une release COMPLETE a partir d'une etiquette `v*` (ex. v0.1.0-rc1) :
+#   - firmware de la console (ESP-IDF) + carte SD (assets et langues) ;
+#   - version PC autonome, Windows et Linux (jeu + editeur + DLL + assets + documentation) ;
+#   - notes tirees de CHANGELOG.md.
+# La release est creee en BROUILLON : rien n'est publie tant que tu n'as pas relu et clique "Publish".
+# Une etiquette contenant un tiret (v0.1.0-rc1) est marquee "pre-release".
+# Mode d'emploi : docs/RELEASE.md. Test sans etiquette : "Run workflow" avec un nom d'etiquette de test.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Nom de l'etiquette (ex. v0.1.0-rc1)"
+        required: true
+        default: 'v0.0.0-test'
+
+permissions:
+  contents: write
+
+jobs:
+  assets:
+    name: SD card assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout Ethynd d'origine (images, sons, constantes -- Unlicense)
+        uses: actions/checkout@v4
+        with:
+          repository: ProjetIsn2019/Ethynd
+          path: ethynd_src
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pil ffmpeg
+      - name: Check, convert and zip
+        run: python3 tools/dev.py package ethynd_src
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rel-assets
+          path: dist/*.zip
+
+  firmware:
+    name: AKA firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove stale ESP-IDF build cache
+        run: rm -rf build
+      - name: Fetch minimp3.h
+        run: bash tools/fetch_minimp3.sh
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.1
+          target: esp32s3
+          path: '.'
+      - name: Zip firmware
+        run: |
+          mkdir -p dist
+          cd build && zip -r ../dist/Ethynd_aka_firmware.zip ethynd_aka.bin bootloader/bootloader.bin partition_table/partition-table.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rel-firmware
+          path: dist/Ethynd_aka_firmware.zip
+
+  pc:
+    name: PC ${{ matrix.label }}
+    needs: assets
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install SDL2 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev libsdl2-mixer-dev
+
+      - name: Install SDL2 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          vcpkg install sdl2:x64-windows sdl2-mixer:x64-windows
+          $vcpkgExe = (Get-Command vcpkg -ErrorAction Stop).Source
+          $vcpkgRoot = Split-Path -Parent $vcpkgExe
+          $toolchain = Join-Path $vcpkgRoot 'scripts\buildsystems\vcpkg.cmake'
+          if (-not (Test-Path $toolchain)) { throw "Fichier toolchain vcpkg introuvable : $toolchain" }
+          "CMAKE_TOOLCHAIN_FILE=$toolchain" >> $env:GITHUB_ENV
+
+      - name: Configure and build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -S platform_sdl -B build && cmake --build build --config Release
+          cmake -S editor -B build_editor && cmake --build build_editor --config Release
+
+      - name: Configure and build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -S platform_sdl -B build -DCMAKE_TOOLCHAIN_FILE="$env:CMAKE_TOOLCHAIN_FILE" -DVCPKG_TARGET_TRIPLET=x64-windows -A x64
+          cmake --build build --config Release
+          cmake -S editor -B build_editor -DCMAKE_TOOLCHAIN_FILE="$env:CMAKE_TOOLCHAIN_FILE" -DVCPKG_TARGET_TRIPLET=x64-windows -A x64
+          cmake --build build_editor --config Release
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rel-assets
+          path: assets_zip
+
+      - name: Package (self-contained zip)
+        shell: bash
+        run: |
+          python tools/package_pc.py --game build --editor build_editor \
+            --sd-zip assets_zip/Ethynd_sdcard.zip --editor-assets-zip assets_zip/Ethynd_editor_assets.zip \
+            --out dist/Ethynd_PC_${{ matrix.label }}.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rel-pc-${{ matrix.label }}
+          path: dist/Ethynd_PC_${{ matrix.label }}.zip
+
+  release:
+    name: Create draft release
+    needs: [assets, firmware, pc]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rel-*
+          path: parts
+          merge-multiple: true
+      - name: Release notes
+        run: python3 tools/release_notes.py --tag "${{ github.event.inputs.tag || github.ref_name }}" > notes.md
+      - name: List files
+        run: ls -la parts
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Ethynd AKA ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: notes.md
+          draft: true
+          prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, '-') }}
+          files: parts/*.zip
+          fail_on_unmatched_files: true

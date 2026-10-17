@@ -12,6 +12,7 @@
 //  - apres l'ecran de mort, retour au menu au lieu de quitter le programme ;
 //  - nouveautes : PNJ + dialogues, objectifs, objets (potions, cristal), ecran de victoire.
 #pragma once
+#include <functional>
 #include <string>
 #include <vector>
 #include "AssetStore.h"
@@ -34,11 +35,18 @@ class Game {
   public:
     Game( IRenderer& r, IAudio& a, IAssetSource& s ) : renderer( r ), audio( a ), source( s ) {}
     bool init();                          // charge assets, monde et langue ; false si un fichier manque
+    const char* initError() const { return initErr.c_str(); }   // pourquoi init() a echoue (fichier manquant...)
     void update( const IInput& input );   // 1 tick
     void render();                        // dessine l'ecran courant (present() a la charge de l'appelant)
 
     // Langue : code de lang/<code>.bin ("fr", "en", ...). Peut etre appele avant ou apres init().
     void setLanguage( const char* code );
+    // Affichage de diagnostic (bouton D) : FPS, ticks/s et, si fourni, une ligne propre a la plateforme
+    // (console : memoire libre). Sert a mesurer la fluidite sur le materiel.
+    void setDebugProvider( std::function<void( char*, size_t )> f ) { debugExtra = std::move( f ); }
+    bool debugVisible() const { return showDebug; }
+    int  measuredFps() const { return dbgFps; }
+    int  measuredTps() const { return dbgTps; }
     // Phrase propre a la plateforme affichee dans l'aide, par CLE de traduction (ex. "ui.quit.aka")
     void setQuitHintKey( const char* key ) { quitKey = key ? key : ""; }
 
@@ -58,6 +66,8 @@ class Game {
 #ifdef ETHYND_HOST_TEST
     void debugSetCamera( int x, int y ) { gmap.camX = x; gmap.camY = y; }   // tests PC uniquement
     void debugSetFlag( int i ) { qs.setFlag( i ); }
+    void debugHeal( int n ) { player.heal( n ); }
+    void debugKeepOnlyBosses() { std::vector<Monster> k; for ( const Monster& m : monsters ) if ( m.boss() ) k.push_back( m ); monsters.swap( k ); }   // isole un combat de boss
     void debugTeleport( int map, int px, int py ) { enterMap( map, kLogicCx - px, kPlayerHitCy - py ); }
 #endif
 
@@ -70,6 +80,7 @@ class Game {
     Lang lang;
     std::string langCode = Lang::kDefault, quitKey;
     bool ready = false;
+    std::string initErr;
 
     ResolvedChar playerChar, entityChars[8], npcChars[4];
     std::vector<ImageId> itemIcons;
@@ -81,6 +92,7 @@ class Game {
     std::vector<MapItem> items;
     std::vector<Rect> blockers;                          // rectangles monde des PNJ
     std::vector<std::vector<uint8_t>> taken;             // objets deja ramasses, par carte
+    std::vector<std::vector<uint8_t>> bossDown;          // boss deja vaincus, par carte (ils ne reapparaissent pas)
     QuestState qs;
     Screen current = Screen::Menu;
 
@@ -88,6 +100,12 @@ class Game {
     int dlg = -1, dlgLine = 0, dlgPage = 0, dlgShown = 0;
     std::vector<std::string> dlgRows;
     bool winPending = false;
+    std::function<void( char*, size_t )> debugExtra;
+    bool showDebug = false;
+    uint32_t dbgLastMs = 0;
+    int dbgFrames = 0, dbgTicks = 0, dbgFps = 0, dbgTps = 0;
+    void drawDebug();
+    void renderDispatch();
     bool doorsArmed = false;                             // les portes ne s'activent qu'apres avoir quitte la zone d'arrivee
     // messages ephemeres
     std::vector<std::string> toastQueue;
@@ -107,6 +125,7 @@ class Game {
     Rect playerWorld() const { return Rect{ Player::hitbox().x - gmap.camX, Player::hitbox().y - gmap.camY, kPlayerHitW, kPlayerHitH }; }
     void checkDoors();
     void checkItems();
+    bool itemAvailable( const MapItem& m ) const { return m.reqObj < 0 || qs.done( m.reqObj ); }     // objet "cache" tant que son objectif n'est pas termine
     void updateObjectives();
     bool objectiveMet( const Objective& o ) const;
     void pushToast( const std::string& s ) { toastQueue.push_back( s ); }

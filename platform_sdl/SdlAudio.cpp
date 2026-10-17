@@ -2,8 +2,8 @@
 #include <cstdio>
 
 static const char* const kMusicFiles[5] = { "", "menu.mp3", "maison.mp3", "aventure.mp3", "grotte.mp3" };
-static const char* const kSfxFiles[5] = { "selection_menu.wav", "joueur_marche.wav", "joueur_attaque.wav",
-                                          "joueur_blessure.wav", "monstre_chauve_souris.wav" };
+static const char* const kSfxFiles[6] = { "selection_menu.wav", "joueur_marche.wav", "joueur_attaque.wav",
+                                          "joueur_blessure.wav", "monstre_chauve_souris.wav", "monstre_dragon_rouge.wav" };
 
 SdlAudio::SdlAudio( std::string d ) : dir( d )
 {
@@ -17,7 +17,7 @@ SdlAudio::SdlAudio( std::string d ) : dir( d )
         music[i] = Mix_LoadMUS( ( dir + "/" + kMusicFiles[i] ).c_str() );
         if ( !music[i] ) std::fprintf( stderr, "musique %s : %s\n", kMusicFiles[i], Mix_GetError() );
     }
-    for ( int i = 0; i < 5; i++ ) {
+    for ( int i = 0; i < 6; i++ ) {
         sfx[i] = Mix_LoadWAV( ( dir + "/" + kSfxFiles[i] ).c_str() );
         if ( !sfx[i] ) std::fprintf( stderr, "effet %s : %s\n", kSfxFiles[i], Mix_GetError() );
     }
@@ -55,6 +55,6 @@ void SdlAudio::playSfx( Sfx s )
     switch ( s ) {
         case Sfx::MenuSelect: Mix_PlayChannel( kChUi, sfx[(int)s], 0 ); break;
         case Sfx::Walk: case Sfx::Attack: case Sfx::Hurt: Mix_PlayChannel( kChPlayer, sfx[(int)s], 0 ); break;  // remplace le son en cours
-        case Sfx::MonsterHit: if ( !Mix_Playing( kChMonster ) ) Mix_PlayChannel( kChMonster, sfx[(int)s], 0 ); break;
+        case Sfx::MonsterHit: case Sfx::BossHit: if ( !Mix_Playing( kChMonster ) ) Mix_PlayChannel( kChMonster, sfx[(int)s], 0 ); break;
     }
 }

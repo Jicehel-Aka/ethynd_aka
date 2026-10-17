@@ -63,7 +63,7 @@ bool AssetStore::loadMap( IAssetSource& src, const char* name, MapData& out ) co
     std::vector<uint8_t> d;
     if ( !src.read( path, d ) ) return false;
     ByteReader r( d.data(), d.size() );
-    if ( !r.tag( "EMA2" ) ) { fprintf( stderr, "%s : format de carte inconnu\n", path ); return false; }
+    if ( !r.tag( "EMA3" ) ) { fprintf( stderr, "%s : format de carte inconnu\n", path ); return false; }
     int w = r.u16(), h = r.u16(), layers = r.u16();
     r.u16();                                              // taille de tuile d'affichage (deja verifiee)
     if ( layers != 4 || !r.ok() ) return false;
@@ -76,7 +76,7 @@ bool AssetStore::loadMap( IAssetSource& src, const char* name, MapData& out ) co
     }
     int n = r.u16();
     for ( int i = 0; i < n; i++ ) {
-        SpawnObj s; s.type = r.sstr(); s.x = r.s16(); s.y = r.s16(); s.vie = r.s16(); s.attaque = r.s16();
+        SpawnObj s; s.type = r.sstr(); s.x = r.s16(); s.y = r.s16(); s.vie = r.s16(); s.attaque = r.s16(); s.radius = r.s16();
         out.objects.spawns.push_back( s );
     }
     n = r.u16();
@@ -93,6 +93,6 @@ bool AssetStore::loadMap( IAssetSource& src, const char* name, MapData& out ) co
         out.objects.doors.push_back( o );
     }
     n = r.u16();
-    for ( int i = 0; i < n; i++ ) { ItemObj o; o.def = r.u8(); o.x = r.s16(); o.y = r.s16(); out.objects.items.push_back( o ); }
+    for ( int i = 0; i < n; i++ ) { ItemObj o; o.def = r.u8(); o.x = r.s16(); o.y = r.s16(); o.after = r.s8(); out.objects.items.push_back( o ); }
     return r.ok();
 }

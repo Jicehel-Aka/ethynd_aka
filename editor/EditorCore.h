@@ -80,9 +80,11 @@ class EditorCore {
     int mouseX = 0, mouseY = 0, lastCellX = -1, lastCellY = -1, startCellX = 0, startCellY = 0;
     int dragOffX = 0, dragOffY = 0, panStartX = 0, panStartY = 0, panScrollX = 0, panScrollY = 0;
     bool dragMoved = false;
+    bool pickingDest = false;                       // L : choisir la destination d'une porte en cliquant sur la carte d'arrivee
+    int pickSrcMap = -1, pickDoorIdx = -1;
     int palScroll = 0;                              // premiere ligne visible de la palette
     // saisie d'une ligne de texte
-    enum class Prompt { None, Props, NewMap, Goto, Music } promptKind = Prompt::None;
+    enum class Prompt { None, Props, NewMap, Goto, Music, Resize } promptKind = Prompt::None;
     std::string promptText, promptLabel;
 
     // conversions
@@ -115,6 +117,9 @@ class EditorCore {
     void commitPrompt();
     void startPrompt( Prompt k, const std::string& label, const std::string& initial );
     bool newMap( const std::string& line );
+    bool resizeMap( const std::string& line );
+    void beginPickDest();
+    void endPickDest( bool apply, int cx, int cy );
     void switchMap( int delta );
     void gotoTile( int id );
     void onKey( const EdEvent& e );

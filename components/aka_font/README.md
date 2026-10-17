@@ -15,12 +15,15 @@ d'afficher du charabia.
 
 ## Ce qu'il couvre
 
-41 caractères accentués en plus de l'ASCII de base (voir
-`include/aka_font/font8x8_extended.h`) :
+Caractères accentués en plus de l'ASCII de base (voir `include/aka_font/font8x8_extended.h`) :
 
 - **Français** : à â ç è é ê ë î ï ô ù û ü + majuscules correspondantes, «, »
 - **Espagnol** : á í ñ ó ú + majuscules, ¿, ¡
-- **Allemand** : ä ö ü ß + majuscules (ü/ö/ä partagés avec le français)
+- **Allemand** : ä ö ü ß + majuscules *(ä ö Ä Ö ajoutés dans le portage Ethynd ; absents des versions antérieures
+  de ce composant malgré ce que disait cette liste)*
+- **Italien** : ì ò (+ à è é ù déjà présents) et majuscules
+- **Portugais** : ã õ (+ á â ç é ê í ó ô ú déjà présents) et majuscules
+- **Divers** : ° (degré)
 
 Non couvert (repli automatique, pas de plantage) :
 - `œ`/`Œ` → affiché comme `oe`/`OE` (deux caractères)

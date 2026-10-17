@@ -78,16 +78,19 @@ jobs:
       - name: Build editor
         run: cmake --build build_editor --config Release
 
-      - name: Upload editor artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-python@v5
         with:
-          name: ethynd-editor-${{ matrix.os }}
-          path: build_editor/**/ethynd_editor*
-          if-no-files-found: warn
+          python-version: '3.x'
 
-      - name: Upload build artifact
+      # Archive PAR SYSTEME avec les DLL de vcpkg (sans elles le jeu ne demarre pas sous Windows) ; sans assets ici
+      # (les assets sont dans l'archive de la carte SD ; la release assemble le tout : release.yml)
+      - name: Package (zip with DLLs)
+        shell: bash
+        run: python tools/package_pc.py --game build --editor build_editor --out dist/Ethynd_PC_${{ runner.os }}.zip
+
+      - name: Upload PC artifact
         uses: actions/upload-artifact@v4
         with:
           name: ethynd-pc-${{ matrix.os }}
-          path: build/**/ethynd_pc*
+          path: dist/*.zip
           if-no-files-found: warn

@@ -9,7 +9,7 @@ class FileAssetSource : public IAssetSource {
     explicit FileAssetSource( std::string d ) : dir( d ) {}
     bool read( const char* rel, std::vector<uint8_t>& out ) override {
         FILE* f = fopen( ( dir + "/" + rel ).c_str(), "rb" );
-        if ( !f ) { fprintf( stderr, "introuvable : %s/%s\n", dir.c_str(), rel ); return false; }
+        if ( !f ) { lastFailed = rel; fprintf( stderr, "introuvable : %s/%s\n", dir.c_str(), rel ); return false; }
         fseek( f, 0, SEEK_END ); long n = ftell( f ); fseek( f, 0, SEEK_SET );
         if ( n <= 0 ) { fclose( f ); return false; }
         out.resize( (size_t)n );

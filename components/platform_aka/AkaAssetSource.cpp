@@ -8,7 +8,7 @@ bool AkaAssetSource::read( const char* relPath, std::vector<uint8_t>& out )
 {
     std::string path = base + "/" + relPath;
     FILE* f = fopen( path.c_str(), "rb" );
-    if ( !f ) { ESP_LOGE( TAG, "introuvable : %s", path.c_str() ); return false; }
+    if ( !f ) { lastFailed = relPath; ESP_LOGE( TAG, "introuvable : %s", path.c_str() ); return false; }
     fseek( f, 0, SEEK_END );
     long n = ftell( f );
     fseek( f, 0, SEEK_SET );

@@ -32,10 +32,10 @@ struct Objective {
 enum RuleKind : uint8_t { RULE_DEFAULT = 0, RULE_FLAG = 1, RULE_NOT_FLAG = 2, RULE_HAS_ITEM = 3 };
 struct TalkRule { uint8_t kind; int16_t arg; int16_t dialogue; };
 
-struct SpawnObj { std::string type; int16_t x, y, vie, attaque; };
+struct SpawnObj { std::string type; int16_t x, y, vie, attaque, radius = 0; };   // radius > 0 : gardien de zone (boss)
 struct NpcObj   { std::string type; int16_t x, y; Dir dir; std::vector<TalkRule> rules; };
 struct DoorObj  { Rect r; uint8_t destMap; int16_t dx, dy; int16_t needFlag, deny; };  // dx, dy : centre du joueur a l'arrivee
-struct ItemObj  { uint8_t def; int16_t x, y; };
+struct ItemObj  { uint8_t def; int16_t x, y; int8_t after = -1; };      // after : objectif a terminer avant que l'objet apparaisse
 
 struct MapObjects {
     uint8_t music = 0;

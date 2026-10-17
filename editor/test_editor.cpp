@@ -154,6 +154,62 @@ int main( int argc, char** argv )
     ed.layer = 0; d.key( 'b' ); ed.selTile = 5; d.click( d.px( 0 ), d.py( 0 ) );
     CHECK( ed.cur().at( 0, 0, 0 ) == 5, "on peut peindre sur la nouvelle carte" );
 
+    printf( "[destination d'une porte, taille de la carte]\n" );
+    while ( ed.curMap != mi ) d.key( ED_TAB );
+    d.key( 'v' );
+    { EdMap& mm = ed.cur(); const EdDoor& dd = mm.doors.back();
+      d.click( d.px( dd.x / 32 ), d.py( dd.y / 32 ) );
+      CHECK( ed.selKind == EdSel::Door, "porte selectionnee" );
+      d.key( 'l' );
+      CHECK( ed.world.maps[ed.curMap].name == "grotte", "L : on passe sur la carte d'arrivee (grotte)" );
+      d.key( 'p' );
+      CHECK( true, "(P ne fait rien pendant le choix : rien n'est selectionne)" );
+      d.key( ED_TAB );
+      CHECK( ed.world.maps[ed.curMap].name == "grotte", "Tab ignore pendant le choix de la destination" );
+      d.click( d.px( 10 ), d.py( 14 ) );
+      CHECK( ed.world.maps[ed.curMap].name == "maison", "le clic valide et ramene sur la carte de la porte" );
+      CHECK( mm.doors.back().dx == 10 * 32 + 16 && mm.doors.back().dy == 14 * 32 + 16, "destination = centre de la case cliquee" );
+      d.key( 'z', true );
+      CHECK( mm.doors.back().dx != 10 * 32 + 16, "Ctrl+Z annule le choix de destination" ); }
+    d.key( 'l' ); d.key( ED_ESC );
+    CHECK( ed.world.maps[ed.curMap].name == "maison", "Echap annule le choix et revient" );
+    ed.layer = 0; ed.selTile = 9; { EdMap& mm = ed.cur(); int w0 = mm.w, h0 = mm.h; d.key( 'b' ); d.click( d.px( w0 - 1 ), d.py( h0 - 1 ) );
+      int painted = mm.at( 0, w0 - 1, h0 - 1 );
+      d.key( 'r', true ); for ( int i = 0; i < 12; i++ ) d.key( ED_BACKSPACE ); d.type( std::to_string( w0 + 4 ) + " " + std::to_string( h0 + 2 ) ); d.key( ED_ENTER );
+      CHECK( mm.w == w0 + 4 && mm.h == h0 + 2, "Ctrl+R : carte agrandie" );
+      CHECK( mm.at( 0, w0 - 1, h0 - 1 ) == painted && mm.at( 0, w0 + 3, h0 + 1 ) == -1, "le contenu est conserve en haut a gauche, le reste est vide" );
+      d.key( 'z', true );
+      CHECK( mm.w == w0 && mm.h == h0, "Ctrl+Z annule le redimensionnement" );
+      d.key( 'r', true ); for ( int i = 0; i < 12; i++ ) d.key( ED_BACKSPACE ); d.type( "2 2" ); d.key( ED_ENTER );
+      CHECK( mm.w == w0, "taille invalide refusee" ); }
+
+    printf( "[boss et objet conditionne]\n" );
+    { int gi = ed.world.mapIndex( "grotte" ); while ( ed.curMap != gi ) d.key( ED_TAB );
+      EdMap& gm = ed.cur(); bool foundBoss = false, foundGated = false;
+      for ( const EdSpawn& s : gm.spawns ) if ( s.type == "dragon_rouge" && s.rayon == 170 ) foundBoss = true;
+      for ( const EdItem& it : gm.items ) if ( it.id == "crystal" && it.after == "dragon" ) foundGated = true;
+      CHECK( foundBoss, "le dragon (rayon 170) est lu depuis la carte" );
+      CHECK( foundGated, "le Cristal est conditionne par l'objectif 'dragon'" );
+      d.key( 'v' ); ed.selKind = EdSel::Spawn; for ( size_t i = 0; i < gm.spawns.size(); i++ ) if ( gm.spawns[i].rayon > 0 ) ed.selIdx = (int)i;
+      d.key( 'p' ); for ( int i = 0; i < 60; i++ ) d.key( ED_BACKSPACE ); d.type( "dragon_rouge 202 622 80 4 200" ); d.key( ED_ENTER );
+      bool ok = false; for ( const EdSpawn& s : gm.spawns ) if ( s.type == "dragon_rouge" && s.vie == 80 && s.rayon == 200 ) ok = true;
+      CHECK( ok, "proprietes du boss : vie et rayon modifiables (6 champs)" );
+      d.key( 'z', true );
+      ok = false; for ( const EdSpawn& s : gm.spawns ) if ( s.type == "dragon_rouge" && s.vie == 60 && s.rayon == 170 ) ok = true;
+      CHECK( ok, "Ctrl+Z restaure le boss" );
+      d.key( 'v' ); ed.selKind = EdSel::Item; for ( size_t i = 0; i < gm.items.size(); i++ ) if ( gm.items[i].id == "crystal" ) ed.selIdx = (int)i;
+      d.key( 'p' ); for ( int i = 0; i < 60; i++ ) d.key( ED_BACKSPACE ); d.type( "crystal 96 640 objectif_fantome" ); d.key( ED_ENTER );
+      CHECK( gm.items[ed.selIdx].after == "dragon", "objectif inconnu : refuse" );
+      d.key( 'p' ); for ( int i = 0; i < 60; i++ ) d.key( ED_BACKSPACE ); d.type( "crystal 96 640 bats" ); d.key( ED_ENTER );
+      CHECK( gm.items[ed.selIdx].after == "bats", "objectif valide : accepte" );
+      d.key( 'z', true );
+      while ( ed.curMap != mi ) d.key( ED_TAB ); }
+
+    printf( "[valeur de traduction vide = repli sur fr]\n" );
+    { std::ofstream f( work + "/lang/vide.txt" ); f << "ed.tool.brush =\ned.tool.fill = Relleno\n"; }
+    EditorCore ev; CHECK( ev.open( work, assets, "vide", err ), "ouverture avec une langue partielle" );
+    CHECK( ev.tr( "ed.tool.brush" ) == "Pinceau" && ev.tr( "ed.tool.fill" ) == "Relleno", "valeur vide : repli sur fr ; valeur presente : utilisee" );
+
     printf( "[sauvegarde et relecture]\n" );
     CHECK( ed.dirty, "etat modifie" );
     CHECK( ed.saveAll() && !ed.dirty, "Ctrl+S sauvegarde" );

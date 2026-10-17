@@ -160,7 +160,7 @@ def parse_rules(rules, story):
 def write_map_bin(path, m, world, story, tile, remap):
     names = world["maps"]
     item_ids = [i["id"] for i in story["items"]]
-    b = bytearray(b"EMA2")
+    b = bytearray(b"EMA3")
     b += struct.pack("<HHHH", m["w"], m["h"], 4, tile)
     b += u8(wio.MUSICS.index(m["music"])) + u8(0)
     for layer in m["layers"]:
@@ -169,7 +169,7 @@ def write_map_bin(path, m, world, story, tile, remap):
                 b += u16(EMPTY if v < 0 else remap[v])
     b += u16(len(m["spawns"]))
     for s in m["spawns"]:
-        b += sstr(s["type"]) + s16(s["x"]) + s16(s["y"]) + s16(s["vie"]) + s16(s["attaque"])
+        b += sstr(s["type"]) + s16(s["x"]) + s16(s["y"]) + s16(s["vie"]) + s16(s["attaque"]) + s16(s.get("rayon", 0))
     b += u16(len(m["npcs"]))
     for s in m["npcs"]:
         rules = parse_rules(s["rules"], story)
@@ -184,7 +184,8 @@ def write_map_bin(path, m, world, story, tile, remap):
         b += s16(d["dx"]) + s16(d["dy"]) + s16(req) + s16(deny)
     b += u16(len(m["items"]))
     for s in m["items"]:
-        b += u8(item_ids.index(s["id"])) + s16(s["x"]) + s16(s["y"])
+        after = -1 if s.get("after", "-") == "-" else [o["id"] for o in story["objectives"]].index(s["after"])
+        b += u8(item_ids.index(s["id"])) + s16(s["x"]) + s16(s["y"]) + struct.pack("<b", after)
     with open(path, "wb") as f:
         f.write(b)
 
@@ -252,19 +253,19 @@ def write_langs(dst, langs):
     os.makedirs(out, exist_ok=True)
     ref = langs[wio.DEFAULT_LANG]
     for code, d in langs.items():
-        game_keys = sorted(k for k in d if not k.startswith(("aka.", "ed.")))
+        game_keys = sorted(k for k in d if d[k] and not k.startswith(("aka.", "ed.")))
         b = bytearray(b"ELNG") + u16(len(game_keys))
         for k in game_keys:
             b += sstr(k) + lstr(d[k])
         with open(os.path.join(out, code + ".bin"), "wb") as f:
             f.write(b)
-        aka = {k[4:]: v for k, v in d.items() if k.startswith("aka.")}
+        aka = {k[4:]: v for k, v in d.items() if k.startswith("aka.") and v}
         for k, v in ref.items():       # menu systeme : repli sur le francais si cle absente
             if k.startswith("aka.") and k[4:] not in aka:
                 aka[k[4:]] = v
         with open(os.path.join(out, code + ".json"), "w", encoding="utf-8") as f:
             json.dump(aka, f, ensure_ascii=False, indent=1)
-        missing = [k for k in ref if k not in d]
+        missing = [k for k in ref if not d.get(k)]
         if missing:
             print("  attention : %s.txt n'a pas %d cle(s) (repli sur fr) : %s%s" % (
                 code, len(missing), ", ".join(missing[:4]), "..." if len(missing) > 4 else ""))
@@ -342,13 +343,7 @@ def convert_world(src, dst, world_dir, tile, ce, editor_out):
 
 # ------------------------------------------------------------------ sprites
 # Variantes de PNJ : echange de palette du personnage (14 couleurs seulement dans l'original)
-NPC_VARIANTS = {
-    "sage": {(67, 46, 39): (235, 235, 240), (106, 72, 52): (190, 190, 200),
-             (196, 60, 60): (70, 160, 110), (136, 46, 46): (40, 110, 75), (104, 28, 28): (25, 75, 50),
-             (101, 101, 155): (140, 110, 70)},
-    "gardien": {(196, 60, 60): (70, 100, 180), (136, 46, 46): (45, 70, 130), (104, 28, 28): (30, 45, 95),
-                (101, 101, 155): (90, 90, 90)},
-}
+from npc_defs import NPC_VARIANTS  # noqa : palettes des PNJ (source unique, partagee avec gen_data.py)
 
 # Icones d'objets dessinees ici (16x16, agrandies x2) : '.' = transparent
 ICON_PALETTE = {"K": (23, 23, 23), "G": (200, 220, 235), "R": (196, 60, 60), "r": (136, 46, 46),

@@ -42,5 +42,6 @@ say - deny.village
 objective find_sage - flag:talked_sage obj.find_sage
 objective enter_cave find_sage map:grotte obj.enter_cave
 objective bats enter_cave kill:chauve_souris:4 obj.bats
-objective crystal bats item:crystal:1 obj.crystal
+objective dragon bats kill:dragon_rouge:1 obj.dragon
+objective crystal dragon item:crystal:1 obj.crystal
 objective deliver crystal flag:crystal_returned obj.deliver

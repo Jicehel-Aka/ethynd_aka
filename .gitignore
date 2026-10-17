@@ -2,3 +2,5 @@ build/
 sdkconfig.old
 __pycache__
 editor_assets/
+dist/
+sdcard_files/Ethynd/

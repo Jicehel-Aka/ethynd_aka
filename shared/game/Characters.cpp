@@ -1,5 +1,6 @@
 #include "Characters.h"
 #include <cstring>
+#include <cstdlib>
 
 // ---------------------------------------------------------------- aleatoire
 static uint32_t rngState = 2463534242u;
@@ -84,7 +85,7 @@ void Player::readKeys( const InputState& in, GameMap& map, const std::vector<Rec
     a.libre = true;
 }
 
-static Rect screenRect( const Monster& m, const GameMap& map ) { return Rect{ m.wx + map.camX, m.wy + map.camY, 32, 32 }; }
+static Rect screenRect( const Monster& m, const GameMap& map ) { return Rect{ m.wx + map.camX, m.wy + map.camY, m.size, m.size }; }
 
 void Player::updateSword()
 {
@@ -105,18 +106,30 @@ void Player::updateSword()
 void Player::update( const GameMap& map, std::vector<Monster>& monsters, IAudio& audio )
 {
     // enlever_vie() : seuls les monstres dangereux (attaque > 0) blessent, voir Game.h
+    // Degats = attaque / 2 (au moins 1) : attaque 2 = 1 point comme Ethynd, attaque 4 (dragon) = 2 points.
     bool touche = false, epeeTouche = false;
+    int dmg = 1;
     for ( const Monster& m : monsters ) {
         if ( !m.alive() || m.attaque <= 0 ) continue;
         Rect r = screenRect( m, map );
-        if ( rectsOverlap( hitbox(), r ) ) touche = true;
-        if ( rectsOverlap( swordRect, r ) ) epeeTouche = true;     // rect de l'epee conserve apres l'attaque
+        if ( rectsOverlap( hitbox(), r ) ) { touche = true; if ( m.attaque / 2 > dmg ) dmg = m.attaque / 2; }
+        // Immunite pendant l'attaque : l'epee qui touche un monstre annule ses degats (Ethynd). Differences avec l'original :
+        // seulement PENDANT l'attaque (l'original gardait le dernier rectangle d'epee et protegeait de facon incoherente apres),
+        // et jamais contre un boss (sinon marteler A a son contact le rendrait inoffensif).
+        if ( attackActive && !m.boss() && rectsOverlap( swordRect, r ) ) epeeTouche = true;
     }
     if ( touche && !blesser ) {
         if ( !epeeTouche ) {
             audio.playSfx( Sfx::Hurt );
             blesser = true;
-            vie -= kEnemyDamage;
+            hurtTimer = 0;
+            vie -= dmg;
+        }
+    } else if ( touche && blesser ) {                              // contact prolonge : coup repete (nouveau : l'original n'en donnait qu'un)
+        if ( ++hurtTimer >= kHurtRepeat && !epeeTouche ) {
+            audio.playSfx( Sfx::Hurt );
+            hurtTimer = 0;
+            vie -= dmg;
         }
     } else if ( !touche && blesser ) {
         blesser = false;
@@ -143,7 +156,9 @@ void Player::draw( IRenderer& r ) const
 }
 
 // ---------------------------------------------------------------- monstres
-void monsterUpdate( Monster& m, const GameMap& map )
+static long long sq( long long v ) { return v * v; }
+
+void monsterUpdate( Monster& m, const GameMap& map, const std::vector<Rect>& blockers, const Rect& player )
 {
     // Entite.deplacement() : la liste utilisee est toujours "base" (haut, gauche, bas, droite)
     static const int dx[4] = { 0, -kEntitySpeed, 0,  kEntitySpeed };
@@ -151,14 +166,48 @@ void monsterUpdate( Monster& m, const GameMap& map )
     static const Dir dirs[4] = { DIR_HAUT, DIR_GAUCHE, DIR_BAS, DIR_DROITE };
     if ( m.compteurAction >= 4 ) m.compteurAction = 0;
     m.a.mov = MOV_MARCHE;
-    m.a.dir = dirs[m.compteurAction];
-    int nx = m.wx + dx[m.compteurAction], ny = m.wy + dy[m.compteurAction];
+
+    const int half = m.size / 2;
+    const int cx = m.wx + half, cy = m.wy + half;                      // centre du monstre
+    const int hx = m.homeX + half, hy = m.homeY + half;                // centre de son point d'attache
+    long long dHome = sq( cx - hx ) + sq( cy - hy );
+    int first = m.compteurAction, second = -1;
+    bool chasing = false;
+    if ( m.boss() ) {
+        // Gardien de zone : poursuit le joueur s'il est dans sa zone (rayon + 48 px) et assez proche, sinon rentre
+        // au point d'attache s'il en est sorti, sinon rode au hasard. Il ne quitte jamais sa zone.
+        const int px = player.x + player.w / 2, py = player.y + player.h / 2;
+        const bool aggro = sq( px - hx ) + sq( py - hy ) <= sq( m.radius + 48 ) && sq( px - cx ) + sq( py - cy ) <= sq( 240 );
+        int tx = 0, ty = 0;
+        if ( aggro ) { tx = px - cx; ty = py - cy; chasing = true; }
+        else if ( dHome > sq( m.radius ) ) { tx = hx - cx; ty = hy - cy; chasing = true; }
+        if ( chasing ) {
+            bool horiz = std::abs( tx ) > std::abs( ty );
+            first  = horiz ? ( tx > 0 ? 3 : 1 ) : ( ty > 0 ? 2 : 0 );
+            second = horiz ? ( ty > 0 ? 2 : 0 ) : ( tx > 0 ? 3 : 1 );
+        }
+    }
+    m.a.dir = dirs[first];
+
     // Simplification : test en coordonnees monde (Ethynd testait a la position de l'image
     // precedente, decalee de la vitesse de la camera : au plus 3 px d'ecart).
-    if ( !map.collidesWorld( Rect{ nx, ny, 32, 32 } ) ) { m.wx = nx; m.wy = ny; }
+    auto tryMove = [&]( int idx ) {
+        int nx = m.wx + dx[idx], ny = m.wy + dy[idx];
+        Rect target{ nx, ny, m.size, m.size };
+        if ( map.collidesWorld( target ) ) return false;
+        for ( const Rect& b : blockers ) if ( rectsOverlap( target, b ) ) return false;      // les PNJ sont des obstacles
+        if ( m.boss() ) {                                              // jamais plus loin de son point d'attache
+            long long dn = sq( nx + half - hx ) + sq( ny + half - hy );
+            if ( dn > sq( m.radius ) && dn > dHome ) return false;
+        }
+        m.wx = nx; m.wy = ny; m.a.dir = dirs[idx];
+        return true;
+    };
+    if ( !tryMove( first ) && second >= 0 ) tryMove( second );          // poursuite : contourne l'obstacle par l'autre axe
 
     // afficher() : animation puis choix du sprite ; direction aleatoire a chaque fin de cycle
-    if ( stepAnimator( m.a, m.rc->def ) )
+    // (un monstre en poursuite garde son cap)
+    if ( stepAnimator( m.a, m.rc->def ) && !chasing )
         m.compteurAction = (int)( gameRandom() & 3 );
     m.sprite = pickSprite( m.rc, m.a.dir, m.a.mov, m.a.frame );
 }

@@ -9,10 +9,14 @@ joueur, sprites recolores par convert_assets.py, sans attaque).
 Les monstres, portes, PNJ, objets et l'histoire ne sont PLUS ici : ils viennent des
 fichiers de donnees de world/ (cartes + story.txt), lus a l'execution.
 """
-NPC_VARIANTS = ["sage", "gardien"]
 import os
 import sys
 import types
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from npc_defs import NPC_VARIANTS as _NPC_PALETTES  # noqa : source unique des variantes de PNJ
+
+NPC_VARIANTS = list(_NPC_PALETTES)
 
 DIRS = ["bas", "haut", "gauche", "droite"]
 MOVS = ["base", "marche", "attaque"]

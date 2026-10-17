@@ -14,7 +14,7 @@ constexpr int kTileShow    = 24;          // doit correspondre a "convert_assets
 constexpr int kPlayerSpeed = 3;
 constexpr int kEntitySpeed = 2;
 constexpr int kPlayerLife  = 10;
-constexpr int kEnemyDamage = 1;           // vie perdue par contact (Ethynd : toujours 1)
+constexpr int kHurtRepeat  = 45;          // contact prolonge : nouveau coup toutes les 1,5 s (Ethynd : un seul coup par contact)
 constexpr int kTileAnimTicks = 5;         // les tuiles animees avancent tous les 6 ticks
 
 // Hitbox des jambes du joueur (en coordonnees ecran logique, centree en (320, 253))

@@ -19,6 +19,9 @@ class SoftRenderer : public IRenderer {
   public:
     explicit SoftRenderer( int w = kScreenW, int h = kScreenH ) : W( w ), H( h ), fb( (size_t)w * h, 0 ) {}
     int W, H;                                 // taille du framebuffer (320x240 pour le jeu)
+    // budget de rendu (tests) : appels drawImage, pixels parcourus par drawImage / fillRect
+    uint64_t imageCalls = 0, imagePixels = 0, fillPixels = 0;
+    void resetStats() { imageCalls = imagePixels = fillPixels = 0; }
     struct Img { const uint16_t* px; uint16_t w, h; };
     std::vector<Img> images;
     std::vector<uint16_t> fb;                 // W * H, BGR565
@@ -30,11 +33,13 @@ class SoftRenderer : public IRenderer {
     }
     void fillRect( int16_t x, int16_t y, int16_t w, int16_t h, RGBColor c ) override {
         uint16_t v = nativeColor( c.r, c.g, c.b );
+        if ( w > 0 && h > 0 ) fillPixels += (uint64_t)w * h;
         for ( int yy = y; yy < y + h; yy++ ) for ( int xx = x; xx < x + w; xx++ ) put( xx, yy, v );
     }
     void drawImage( int16_t x, int16_t y, ImageId id ) override {
         if ( id >= images.size() ) return;
         const Img& im = images[id];
+        imageCalls++; imagePixels += (uint64_t)im.w * im.h;
         for ( int yy = 0; yy < im.h; yy++ ) {
             int dy = y + yy; if ( dy < 0 || dy >= H ) continue;
             for ( int xx = 0; xx < im.w; xx++ ) {

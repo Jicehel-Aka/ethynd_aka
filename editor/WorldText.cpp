@@ -54,10 +54,10 @@ static bool parseMap( const std::string& path, EdMap& m, std::string& err )
         else if ( !sized ) return fail( err, path, "'size' doit preceder le reste" );
         else if ( k == "music" && t.size() >= 2 ) m.music = t[1];
         else if ( k == "layer" && t.size() >= 2 ) { layer = atoi( t[1].c_str() ); row = 0; if ( layer < 0 || layer > 3 ) return fail( err, path, "couche 0..3" ); }
-        else if ( k == "spawn" && t.size() == 6 ) m.spawns.push_back( { t[1], atoi( t[2].c_str() ), atoi( t[3].c_str() ), atoi( t[4].c_str() ), atoi( t[5].c_str() ) } );
+        else if ( k == "spawn" && ( t.size() == 6 || t.size() == 7 ) ) m.spawns.push_back( { t[1], atoi( t[2].c_str() ), atoi( t[3].c_str() ), atoi( t[4].c_str() ), atoi( t[5].c_str() ), t.size() == 7 ? atoi( t[6].c_str() ) : 0 } );
         else if ( k == "npc" && t.size() == 7 ) { EdNpc n; n.id = t[1]; n.type = t[2]; n.x = atoi( t[3].c_str() ); n.y = atoi( t[4].c_str() ); n.dir = t[5]; n.rules = t[6]; m.npcs.push_back( n ); }
         else if ( k == "door" && t.size() == 10 ) { EdDoor d; d.x = atoi( t[1].c_str() ); d.y = atoi( t[2].c_str() ); d.w = atoi( t[3].c_str() ); d.h = atoi( t[4].c_str() ); d.map = t[5]; d.dx = atoi( t[6].c_str() ); d.dy = atoi( t[7].c_str() ); d.requires_ = t[8]; d.deny = t[9]; m.doors.push_back( d ); }
-        else if ( k == "item" && t.size() == 4 ) m.items.push_back( { t[1], atoi( t[2].c_str() ), atoi( t[3].c_str() ) } );
+        else if ( k == "item" && ( t.size() == 4 || t.size() == 5 ) ) m.items.push_back( { t[1], atoi( t[2].c_str() ), atoi( t[3].c_str() ), t.size() == 5 ? t[4] : "-" } );
         else return fail( err, path, "ligne inconnue ou incomplete : " + s );
     }
     return sized;
@@ -110,10 +110,18 @@ bool saveMapFile( const std::string& dir, const EdMap& m, std::string& err )
             fputc( '\n', f );
         }
     }
-    for ( const EdSpawn& s : m.spawns ) fprintf( f, "spawn %s %d %d %d %d\n", s.type.c_str(), s.x, s.y, s.vie, s.attaque );
+    for ( const EdSpawn& s : m.spawns ) {
+        fprintf( f, "spawn %s %d %d %d %d", s.type.c_str(), s.x, s.y, s.vie, s.attaque );
+        if ( s.rayon > 0 ) fprintf( f, " %d", s.rayon );
+        fputc( '\n', f );
+    }
     for ( const EdNpc& s : m.npcs ) fprintf( f, "npc %s %s %d %d %s %s\n", s.id.c_str(), s.type.c_str(), s.x, s.y, s.dir.c_str(), s.rules.c_str() );
     for ( const EdDoor& d : m.doors ) fprintf( f, "door %d %d %d %d %s %d %d %s %s\n", d.x, d.y, d.w, d.h, d.map.c_str(), d.dx, d.dy, d.requires_.c_str(), d.deny.c_str() );
-    for ( const EdItem& s : m.items ) fprintf( f, "item %s %d %d\n", s.id.c_str(), s.x, s.y );
+    for ( const EdItem& s : m.items ) {
+        fprintf( f, "item %s %d %d", s.id.c_str(), s.x, s.y );
+        if ( s.after != "-" ) fprintf( f, " %s", s.after.c_str() );
+        fputc( '\n', f );
+    }
     fclose( f );
     return true;
 }

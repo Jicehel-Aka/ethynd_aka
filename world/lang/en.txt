@@ -5,9 +5,9 @@ item.potion = Healing potion
 item.crystal = Crystal of Light
 
 sage.intro.1 = Ah, there you are at last! The village needs you, young adventurer.
-sage.intro.2 = Bats stole the Crystal of Light. Without it, night will fall upon us.
+sage.intro.2 = Bats stole the Crystal of Light and brought it to a red dragon lurking deep in the cave. Without it, night will fall upon us.
 sage.intro.3 = The cellar stairs, at the back on the right, lead to their cave. Strike with A, and watch your health!
-sage.wait.1 = So, where is the Crystal? The cave is at the bottom of the cellar stairs. Defeat the bats and bring it back to me.
+sage.wait.1 = So, where is the Crystal? The cave is at the bottom of the cellar stairs. Defeat the bats, then the red dragon, and bring it back to me.
 sage.thanks.1 = The Crystal of Light! You found it!
 sage.thanks.2 = Thanks to you, the village is saved. Thank you, brave adventurer.
 
@@ -19,6 +19,7 @@ deny.village = The cave entrance is dark. The sage must first tell me what is go
 obj.find_sage = Talk to the sage in the house
 obj.enter_cave = Enter the cave
 obj.bats = Defeat 4 bats
+obj.dragon = Defeat the red dragon
 obj.crystal = Find the Crystal of Light
 obj.deliver = Bring the Crystal back to the sage
 
@@ -31,7 +32,6 @@ ui.help.title = Help
 ui.help.move = D-pad: move
 ui.help.attack = A: attack / talk
 ui.help.log = B: objectives
-ui.help.back = B: back
 ui.help.back_menu = B: back to menu
 ui.help.credits = Game created by:
 ui.dead.title = Game Over!
@@ -111,3 +111,24 @@ ed.help.10 = Story texts are edited in story.txt and lang/*.txt
 ed.build.none = No build command: run tools/build_assets.sh
 ed.build.run = Rebuilding...
 ed.build.done = Rebuild finished (code {0})
+ed.prompt.resize = Map size (width height)
+ed.status.resized = Map resized: {0}
+ed.status.resized_warn = Resized: {0} object(s) left outside the map
+ed.status.pick_dest = Click the destination on map "{0}" (Esc: cancel)
+ed.status.dest_set = Door destination: {0}
+ed.help.11 = Selected door: L pick the destination by clicking on the target map
+ed.help.12 = Ctrl+R resize the map (content anchored at the top left)
+
+# --- on-screen buttons panel of the PC version (below the game area)
+pc.subtitle = PC version
+pc.move.keys = Arrows / WASD
+pc.move.role = Move
+pc.a.keys = X / Space / Enter
+pc.a.role = Attack, talk
+pc.b.keys = Backspace / B
+pc.b.role = Objectives, back
+pc.c.keys = C / H
+pc.c.role = Help (menu)
+pc.d.keys = F3 / Tab
+pc.d.role = Diagnostics
+pc.misc = M: sound    Esc: quit

@@ -3,10 +3,12 @@
 // AKA : /sdcard/Ethynd/<chemin> (tampon en PSRAM) ; PC : dossier disque.
 #pragma once
 #include <cstdint>
+#include <string>
 #include <vector>
 
 class IAssetSource {
   public:
     virtual ~IAssetSource() = default;
+    std::string lastFailed;          // dernier chemin relatif introuvable (pour l'ecran d'erreur)
     virtual bool read( const char* relPath, std::vector<uint8_t>& out ) = 0;
 };

@@ -9,9 +9,9 @@ item.crystal = Cristal de lumière
 
 # --- histoire : le sage
 sage.intro.1 = Ah, te voilà enfin ! Le village a besoin de toi, jeune aventurier.
-sage.intro.2 = Des chauves-souris ont volé le Cristal de lumière. Sans lui, la nuit tombera sur nous.
+sage.intro.2 = Des chauves-souris ont volé le Cristal de lumière et l'ont apporté à un dragon rouge, tapi au fond de la grotte. Sans lui, la nuit tombera sur nous.
 sage.intro.3 = L'escalier de la cave, au fond à droite, mène à leur grotte. Frappe avec A, et prends garde à tes points de vie !
-sage.wait.1 = Alors, ce Cristal ? La grotte est au bout de l'escalier de la cave. Vaincs les chauves-souris et rapporte-le-moi.
+sage.wait.1 = Alors, ce Cristal ? La grotte est au bout de l'escalier de la cave. Vaincs les chauves-souris, puis le dragon rouge, et rapporte-le-moi.
 sage.thanks.1 = Le Cristal de lumière ! Tu l'as retrouvé !
 sage.thanks.2 = Grâce à toi, le village est sauvé. Merci, brave aventurier.
 
@@ -25,6 +25,7 @@ deny.village = L'entrée de la grotte est sombre. Le sage doit d'abord m'expliqu
 obj.find_sage = Parler au sage dans la maison
 obj.enter_cave = Entrer dans la grotte
 obj.bats = Vaincre 4 chauves-souris
+obj.dragon = Vaincre le dragon rouge
 obj.crystal = Retrouver le Cristal de lumière
 obj.deliver = Rapporter le Cristal au sage
 
@@ -38,7 +39,6 @@ ui.help.title = Aide
 ui.help.move = Flèches : se déplacer
 ui.help.attack = A : attaquer / parler
 ui.help.log = B : objectifs
-ui.help.back = B : retour
 ui.help.back_menu = B : retour au menu
 ui.help.credits = Jeu créé par :
 ui.dead.title = Game Over !
@@ -119,3 +119,24 @@ ed.help.10 = Les textes de l'histoire se modifient dans story.txt et lang/*.txt
 ed.build.none = Aucune commande de build : lancer tools/build_assets.sh
 ed.build.run = Reconstruction...
 ed.build.done = Reconstruction terminée (code {0})
+ed.prompt.resize = Taille de la carte (largeur hauteur)
+ed.status.resized = Carte redimensionnée : {0}
+ed.status.resized_warn = Redimensionnée : {0} objet(s) restent hors de la carte
+ed.status.pick_dest = Cliquez la destination sur la carte « {0} » (Échap : annuler)
+ed.status.dest_set = Destination de la porte : {0}
+ed.help.11 = Porte sélectionnée : L choisir la destination en cliquant sur la carte d'arrivée
+ed.help.12 = Ctrl+R redimensionner la carte (contenu ancré en haut à gauche)
+
+# --- panneau de boutons de la version PC (sous la zone de jeu)
+pc.subtitle = Version PC
+pc.move.keys = Flèches / ZQSD
+pc.move.role = Se déplacer
+pc.a.keys = X / Espace / Entrée
+pc.a.role = Attaquer, parler
+pc.b.keys = Retour arrière / B
+pc.b.role = Objectifs, retour
+pc.c.keys = C / H
+pc.c.role = Aide (menu)
+pc.d.keys = F3 / Tab
+pc.d.role = Diagnostic
+pc.misc = M : son    Échap : quitter

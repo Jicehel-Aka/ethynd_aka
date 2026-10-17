@@ -3,7 +3,7 @@
 #pragma once
 
 enum class Music { None, Menu, Maison, Aventure, Grotte };
-enum class Sfx   { MenuSelect, Walk, Attack, Hurt, MonsterHit };
+enum class Sfx   { MenuSelect, Walk, Attack, Hurt, MonsterHit, BossHit };
 
 class IAudio {
   public:

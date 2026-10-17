@@ -27,8 +27,8 @@ static bool isInt( const std::string& s ) { if ( s.empty() ) return false; size_
 // ------------------------------------------------------------------ textes
 std::string EditorCore::tr( const std::string& key ) const
 {
-    auto it = L.find( key ); if ( it != L.end() ) return it->second;
-    it = Lfr.find( key ); return it != Lfr.end() ? it->second : key;
+    auto it = L.find( key ); if ( it != L.end() && !it->second.empty() ) return it->second;      // valeur vide = pas traduit
+    it = Lfr.find( key ); return it != Lfr.end() && !it->second.empty() ? it->second : key;
 }
 std::string EditorCore::tr( const std::string& key, const std::string& a, const std::string& b ) const
 {
@@ -287,10 +287,10 @@ std::string EditorCore::propsLine() const
     const EdMap& m = world.maps[curMap];
     std::ostringstream o;
     switch ( selKind ) {
-        case EdSel::Spawn: { auto& s = m.spawns[selIdx]; o << s.type << ' ' << s.x << ' ' << s.y << ' ' << s.vie << ' ' << s.attaque; break; }
+        case EdSel::Spawn: { auto& s = m.spawns[selIdx]; o << s.type << ' ' << s.x << ' ' << s.y << ' ' << s.vie << ' ' << s.attaque; if ( s.rayon > 0 ) o << ' ' << s.rayon; break; }
         case EdSel::Npc:   { auto& s = m.npcs[selIdx]; o << s.id << ' ' << s.type << ' ' << s.x << ' ' << s.y << ' ' << s.dir << ' ' << s.rules; break; }
         case EdSel::Door:  { auto& d = m.doors[selIdx]; o << d.x << ' ' << d.y << ' ' << d.w << ' ' << d.h << ' ' << d.map << ' ' << d.dx << ' ' << d.dy << ' ' << d.requires_ << ' ' << d.deny; break; }
-        case EdSel::Item:  { auto& s = m.items[selIdx]; o << s.id << ' ' << s.x << ' ' << s.y; break; }
+        case EdSel::Item:  { auto& s = m.items[selIdx]; o << s.id << ' ' << s.x << ' ' << s.y; if ( s.after != "-" ) o << ' ' << s.after; break; }
         case EdSel::Start: o << world.startX << ' ' << world.startY << ' ' << world.startDir; break;
         default: break;
     }
@@ -319,9 +319,9 @@ bool EditorCore::applyProps( const std::string& line, std::string& why )
     EdWorld wcopy;                                           // seul le depart est modifiable ici
     switch ( selKind ) {
         case EdSel::Spawn: {
-            if ( t.size() != 5 || !isInt( t[1] ) || !isInt( t[2] ) || !isInt( t[3] ) || !isInt( t[4] ) ) { why = "type x y vie attaque"; return false; }
+            if ( ( t.size() != 5 && t.size() != 6 ) || !isInt( t[1] ) || !isInt( t[2] ) || !isInt( t[3] ) || !isInt( t[4] ) || ( t.size() == 6 && !isInt( t[5] ) ) ) { why = "type x y vie attaque [rayon]"; return false; }
             if ( std::find( kEntityNames, kEntityNames + kEntityDefCount, t[0] ) == kEntityNames + kEntityDefCount ) { why = "monstre " + t[0]; return false; }
-            copy.spawns[selIdx] = { t[0], atoi( t[1].c_str() ), atoi( t[2].c_str() ), atoi( t[3].c_str() ), atoi( t[4].c_str() ) }; break;
+            copy.spawns[selIdx] = { t[0], atoi( t[1].c_str() ), atoi( t[2].c_str() ), atoi( t[3].c_str() ), atoi( t[4].c_str() ), t.size() == 6 ? atoi( t[5].c_str() ) : 0 }; break;
         }
         case EdSel::Npc: {
             if ( t.size() != 6 || !isInt( t[2] ) || !isInt( t[3] ) ) { why = "id type x y dir regles"; return false; }
@@ -342,9 +342,10 @@ bool EditorCore::applyProps( const std::string& line, std::string& why )
             copy.doors[selIdx] = d; break;
         }
         case EdSel::Item: {
-            if ( t.size() != 3 || !isInt( t[1] ) || !isInt( t[2] ) ) { why = "objet x y"; return false; }
+            if ( ( t.size() != 3 && t.size() != 4 ) || !isInt( t[1] ) || !isInt( t[2] ) ) { why = "objet x y [objectif]"; return false; }
             if ( !contains( world.story.itemIds, t[0] ) ) { why = "objet " + t[0]; return false; }
-            copy.items[selIdx] = { t[0], atoi( t[1].c_str() ), atoi( t[2].c_str() ) }; break;
+            if ( t.size() == 4 && t[3] != "-" && !contains( world.story.objectives, t[3] ) ) { why = "objectif " + t[3]; return false; }
+            copy.items[selIdx] = { t[0], atoi( t[1].c_str() ), atoi( t[2].c_str() ), t.size() == 4 ? t[3] : "-" }; break;
         }
         case EdSel::Start: {
             if ( t.size() != 3 || !isInt( t[0] ) || !isInt( t[1] ) || std::find( kDirs, kDirs + 4, t[2] ) == kDirs + 4 ) { why = "x y direction"; return false; }
@@ -377,8 +378,57 @@ bool EditorCore::newMap( const std::string& line )
     return true;
 }
 
+bool EditorCore::resizeMap( const std::string& line )
+{
+    auto t = tokens( line );
+    if ( t.size() != 2 || !isInt( t[0] ) || !isInt( t[1] ) ) return false;
+    int nw = atoi( t[0].c_str() ), nh = atoi( t[1].c_str() );
+    if ( nw < 4 || nh < 4 || nw > 200 || nh > 200 ) return false;
+    snapshot();
+    EdMap& m = cur();
+    std::vector<int> old[4]; for ( int l = 0; l < 4; l++ ) old[l] = m.layer[l];
+    int ow = m.w, oh = m.h;
+    m.resetLayers( nw, nh );                                  // le contenu reste ancre en haut a gauche
+    for ( int l = 0; l < 4; l++ ) for ( int y = 0; y < std::min( oh, nh ); y++ ) for ( int x = 0; x < std::min( ow, nw ); x++ ) m.layer[l][(size_t)y * nw + x] = old[l][(size_t)y * ow + x];
+    int outside = 0;                                          // objets laisses hors de la nouvelle carte
+    auto out = [&]( int x, int y ) { return x >= nw * 32 || y >= nh * 32; };
+    for ( auto& s : m.spawns ) outside += out( s.x, s.y );
+    for ( auto& s : m.npcs ) outside += out( s.x, s.y );
+    for ( auto& s : m.items ) outside += out( s.x, s.y );
+    for ( auto& s : m.doors ) outside += out( s.x, s.y );
+    clampScroll();
+    setStatus( outside ? tr( "ed.status.resized_warn", std::to_string( outside ) ) : tr( "ed.status.resized", std::to_string( nw ) + "x" + std::to_string( nh ) ) );
+    return true;
+}
+
+void EditorCore::beginPickDest()
+{
+    if ( selKind != EdSel::Door ) return;
+    int target = world.mapIndex( cur().doors[selIdx].map );
+    if ( target < 0 ) return;
+    pickingDest = true; pickSrcMap = curMap; pickDoorIdx = selIdx;
+    curMap = target; scrollX = scrollY = 0; selKind = EdSel::None; selIdx = -1;
+    setStatus( tr( "ed.status.pick_dest", cur().name ) );
+}
+
+void EditorCore::endPickDest( bool apply, int cx, int cy )
+{
+    int dest = curMap;
+    pickingDest = false;
+    curMap = pickSrcMap;                                       // retour sur la carte de la porte
+    scrollX = scrollY = 0;
+    if ( apply && pickDoorIdx >= 0 && pickDoorIdx < (int)cur().doors.size() && world.mapIndex( cur().doors[pickDoorIdx].map ) == dest ) {
+        snapshot();
+        cur().doors[pickDoorIdx].dx = cx * 32 + 16;            // centre de la case : ou arrive le joueur
+        cur().doors[pickDoorIdx].dy = cy * 32 + 16;
+        setStatus( tr( "ed.status.dest_set", std::to_string( cx * 32 + 16 ) + "," + std::to_string( cy * 32 + 16 ) ) );
+    } else setStatus( tr( "ed.status.applied" ) );
+    selKind = EdSel::Door; selIdx = pickDoorIdx;
+}
+
 void EditorCore::switchMap( int delta )
 {
+    if ( pickingDest ) return;                                 // pendant le choix d'une destination, on reste sur la carte d'arrivee
     int n = (int)world.maps.size();
     curMap = ( ( curMap + delta ) % n + n ) % n;
     scrollX = scrollY = 0; selKind = EdSel::None; selIdx = -1;
@@ -391,6 +441,7 @@ void EditorCore::commitPrompt()
     if ( k == Prompt::Props ) { if ( applyProps( promptText, why ) ) setStatus( tr( "ed.status.applied" ) ); else setStatus( tr( "ed.status.bad_value", why ) ); }
     else if ( k == Prompt::NewMap ) { if ( newMap( promptText ) ) setStatus( tr( "ed.status.newmap", cur().name ) ); else setStatus( tr( "ed.status.bad_value", promptText ) ); }
     else if ( k == Prompt::Goto ) { if ( isInt( promptText ) && atoi( promptText.c_str() ) < tilesetCount ) gotoTile( atoi( promptText.c_str() ) ); else setStatus( tr( "ed.status.bad_value", promptText ) ); }
+    else if ( k == Prompt::Resize ) { if ( !resizeMap( promptText ) ) setStatus( tr( "ed.status.bad_value", promptText ) ); }
     else if ( k == Prompt::Music ) {
         if ( std::find( kMusics, kMusics + 5, promptText ) != kMusics + 5 ) { snapshot(); cur().music = promptText; setStatus( tr( "ed.status.applied" ) ); }
         else setStatus( tr( "ed.status.bad_value", promptText ) );
@@ -451,6 +502,7 @@ void EditorCore::onKey( const EdEvent& e )
             case 's': saveAll(); break;
             case 'n': startPrompt( Prompt::NewMap, tr( "ed.prompt.newmap" ), "" ); break;
             case 'm': startPrompt( Prompt::Music, tr( "ed.prompt.music" ), cur().music ); break;
+            case 'r': startPrompt( Prompt::Resize, tr( "ed.prompt.resize" ), std::to_string( cur().w ) + " " + std::to_string( cur().h ) ); break;
             default: break;
         }
         return;
@@ -471,6 +523,7 @@ void EditorCore::onKey( const EdEvent& e )
         case 'c': showColl = !showColl; break;
         case 'h': showHelp = !showHelp; break;
         case 'j': startPrompt( Prompt::Goto, tr( "ed.prompt.goto" ), "" ); break;
+        case 'l': beginPickDest(); break;
         case 'p': if ( selKind != EdSel::None ) startPrompt( Prompt::Props, tr( "ed.prompt.props" ), propsLine() ); break;
         case 'x':
             if ( world.collide.count( selTile ) ) { world.collide.erase( selTile ); setStatus( tr( "ed.status.collide_off", std::to_string( selTile ) ) ); }
@@ -488,7 +541,7 @@ void EditorCore::onKey( const EdEvent& e )
         case ED_LEFT: nudgeSelected( e.shift ? -32 : -8, 0 ); break;
         case ED_RIGHT: nudgeSelected( e.shift ? 32 : 8, 0 ); break;
         case ED_SPACE: panHeld = true; break;
-        case ED_ESC: if ( showHelp ) showHelp = false; else { selKind = EdSel::None; selIdx = -1; } break;
+        case ED_ESC: if ( pickingDest ) endPickDest( false, 0, 0 ); else if ( showHelp ) showHelp = false; else { selKind = EdSel::None; selIdx = -1; } break;
         default:
             if ( k >= ED_F1 && k < ED_F1 + 9 ) {
                 int n = k - ED_F1;
@@ -542,6 +595,10 @@ void EditorCore::handle( const EdEvent& e )
             }
             if ( !inCanvas( e.x, e.y ) ) return;
             int cx = cellX( e.x ), cy = cellY( e.y );
+            if ( pickingDest ) {                                     // clic = destination de la porte
+                if ( e.button == 1 && cx >= 0 && cy >= 0 && cx < cur().w && cy < cur().h ) endPickDest( true, cx, cy );
+                return;
+            }
             if ( e.button == 3 ) { pickTile( cx, cy ); return; }
             mouseDown = true; lastCellX = startCellX = cx; lastCellY = startCellY = cy; dragMoved = false;
             switch ( tool ) {
@@ -725,11 +782,11 @@ void EditorCore::drawStatus( SoftRenderer& r )
 
 void EditorCore::drawHelp( SoftRenderer& r )
 {
-    int w = std::min( vw - 40, 640 ), h = 14 * 11 + 22, x = ( vw - kPanel - w ) / 2 + 10, y = 24;
+    int w = std::min( vw - 40, 640 ), h = 14 * 13 + 22, x = ( vw - kPanel - w ) / 2 + 10, y = 24;
     r.fillRect( x - 2, y - 2, w + 4, h + 4, kYellow );
     r.fillRect( x, y, w, h, RGBColor{ 18, 20, 30 } );
     r.drawText( x + 8, y + 6, tr( "ed.help.title" ).c_str(), kYellow );
-    for ( int i = 1; i <= 10; i++ ) r.drawText( x + 8, y + 10 + i * 12, tr( "ed.help." + std::to_string( i ) ).c_str(), kText );
+    for ( int i = 1; i <= 12; i++ ) r.drawText( x + 8, y + 10 + i * 12, tr( "ed.help." + std::to_string( i ) ).c_str(), kText );
 }
 
 void EditorCore::draw( SoftRenderer& r )
